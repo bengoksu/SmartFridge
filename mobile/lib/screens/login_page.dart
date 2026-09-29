@@ -43,25 +43,30 @@ class _LoginPageState extends State<LoginPage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        final String accessToken = data['access'];
-        final String refreshToken = data['refresh'];
+        final accessToken = data['access'] as String?;
+        final refreshToken = data['refresh'] as String?;
 
         // Bir sonraki adımda bunları güvenli şekilde saklayacağız.
-        if (accessToken != null && refreshToken != null) {
-          if (!mounted) return;
-
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Giriş başarılı')));
-          if (!mounted) return;
-
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => HomePage(accessToken: accessToken),
-            ),
-          );
+        if (accessToken == null || refreshToken == null) {
+          setState(() {
+            errorMessage = 'Sunucudan geçerli oturum bilgisi alınamadı.';
+          });
+          return;
         }
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Giriş başarılı')));
+        if (!mounted) return;
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomePage(accessToken: accessToken),
+          ),
+        );
       } else {
         setState(() {
           errorMessage = 'Kullanıcı adı veya şifre hatalı.';

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'add_product_page.dart';
+import 'fridge_page.dart';
+import 'shopping_list_page.dart';
 
 class HomePage extends StatelessWidget {
   final String accessToken;
@@ -96,10 +98,19 @@ class HomePage extends StatelessWidget {
               mainAxisSpacing: 14,
               childAspectRatio: 1.2,
               children: [
-                const _HomeCard(
+                _HomeCard(
                   icon: Icons.kitchen_outlined,
                   title: 'Buzdolabım',
                   subtitle: 'Ürünlerini görüntüle',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            FridgePage(accessToken: accessToken),
+                      ),
+                    );
+                  },
                 ),
 
                 _HomeCard(
@@ -112,6 +123,20 @@ class HomePage extends StatelessWidget {
                       MaterialPageRoute(
                         builder: (context) =>
                             AddProductPage(accessToken: accessToken),
+                      ),
+                    );
+                  },
+                ),
+
+                _HomeCard(
+                  icon: Icons.shopping_cart_outlined,
+                  title: 'Alışveriş Listesi',
+                  subtitle: 'Eksikleri not al',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ShoppingListPage(),
                       ),
                     );
                   },
