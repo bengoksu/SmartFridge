@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'add_product_page.dart';
 import 'fridge_page.dart';
 import 'shopping_list_page.dart';
@@ -7,11 +8,11 @@ class HomePage extends StatelessWidget {
   final String accessToken;
 
   const HomePage({super.key, required this.accessToken});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -30,7 +31,6 @@ class HomePage extends StatelessWidget {
           const SizedBox(width: 8),
         ],
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -44,16 +44,12 @@ class HomePage extends StatelessWidget {
                 color: Color(0xFF1F2937),
               ),
             ),
-
             const SizedBox(height: 6),
-
             const Text(
               'Bugün buzdolabında neler var bakalım.',
               style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
             ),
-
             const SizedBox(height: 28),
-
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -76,9 +72,7 @@ class HomePage extends StatelessWidget {
                 ],
               ),
             ),
-
             const SizedBox(height: 24),
-
             const Text(
               'Hızlı İşlemler',
               style: TextStyle(
@@ -87,9 +81,7 @@ class HomePage extends StatelessWidget {
                 color: Color(0xFF1F2937),
               ),
             ),
-
             const SizedBox(height: 14),
-
             GridView.count(
               crossAxisCount: 2,
               shrinkWrap: true,
@@ -112,7 +104,6 @@ class HomePage extends StatelessWidget {
                     );
                   },
                 ),
-
                 _HomeCard(
                   icon: Icons.add_circle_outline,
                   title: 'Ürün Ekle',
@@ -127,7 +118,6 @@ class HomePage extends StatelessWidget {
                     );
                   },
                 ),
-
                 _HomeCard(
                   icon: Icons.shopping_cart_outlined,
                   title: 'Alışveriş Listesi',
@@ -141,30 +131,21 @@ class HomePage extends StatelessWidget {
                     );
                   },
                 ),
-
                 const _HomeCard(
                   icon: Icons.groups_outlined,
                   title: 'Ailem',
                   subtitle: 'Ortak buzdolabı',
                 ),
-
-                const _HomeCard(
-                  icon: Icons.restaurant_menu,
-                  title: 'Ne Pişirsem?',
-                  subtitle: 'AI yemek önerisi',
-                ),
               ],
             ),
-
+            const SizedBox(height: 14),
+            const _AiRecipeCard(),
             const SizedBox(height: 26),
-
             const Text(
               'Genel Durum',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
-
             const SizedBox(height: 14),
-
             const Row(
               children: [
                 Expanded(
@@ -177,6 +158,108 @@ class HomePage extends StatelessWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AiRecipeCard extends StatelessWidget {
+  const _AiRecipeCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [Color(0xFF5B4FE9), Color(0xFF8B5CF6)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x295B4FE9),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: .16),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withValues(alpha: .18)),
+            ),
+            child: const Icon(
+              Icons.auto_awesome_rounded,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 16),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Ne Pişirsem?',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    _AiBadge(),
+                  ],
+                ),
+                SizedBox(height: 5),
+                Text(
+                  'Dolabındaki ürünlerle sana özel tarif bul',
+                  style: TextStyle(color: Color(0xFFE9E7FF), fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Icon(
+            Icons.arrow_forward_rounded,
+            color: Colors.white,
+            size: 23,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AiBadge extends StatelessWidget {
+  const _AiBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFDDD6FE),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Text(
+        'AI',
+        style: TextStyle(
+          color: Color(0xFF5B21B6),
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+          letterSpacing: .5,
         ),
       ),
     );
@@ -213,16 +296,12 @@ class _HomeCard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, size: 32, color: const Color(0xFF22C55E)),
-
             const SizedBox(height: 12),
-
             Text(
               title,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
-
             const SizedBox(height: 4),
-
             Text(
               subtitle,
               style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
@@ -259,9 +338,7 @@ class _StatCard extends StatelessWidget {
               color: Color(0xFF22C55E),
             ),
           ),
-
           const SizedBox(height: 4),
-
           Text(label, style: const TextStyle(color: Color(0xFF6B7280))),
         ],
       ),
