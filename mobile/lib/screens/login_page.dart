@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'home_page.dart';
+import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -255,7 +256,24 @@ class _LoginPageState extends State<LoginPage> {
                       style: TextStyle(color: Color(0xFF6B7280)),
                     ),
                     TextButton(
-                      onPressed: () {},
+                      onPressed: () async {
+                        final registered = await Navigator.push<bool>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const RegisterPage(),
+                          ),
+                        );
+
+                        if (registered == true && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Kayıt başarılı. Şimdi giriş yapabilirsiniz.',
+                              ),
+                            ),
+                          );
+                        }
+                      },
                       child: const Text(
                         'Kayıt Ol',
                         style: TextStyle(
