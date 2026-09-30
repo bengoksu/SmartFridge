@@ -19,9 +19,13 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
 
   void _addItem() {
     final name = _itemController.text.trim();
+
     if (name.isEmpty) return;
 
-    setState(() => _items.add(_ShoppingItem(name)));
+    setState(() {
+      _items.add(_ShoppingItem(name));
+    });
+
     _itemController.clear();
   }
 
@@ -31,6 +35,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
+
       appBar: AppBar(
         backgroundColor: const Color(0xFFF8FAFC),
         surfaceTintColor: Colors.transparent,
@@ -38,7 +43,19 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
           'Alışveriş Listesi',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Tamamlananları temizle',
+            onPressed: () {
+              setState(() {
+                _items.removeWhere((item) => item.isCompleted);
+              });
+            },
+            icon: const Icon(Icons.cleaning_services_outlined),
+          ),
+        ],
       ),
+
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
@@ -54,7 +71,9 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
+
               const SizedBox(height: 16),
+
               Row(
                 children: [
                   Expanded(
@@ -81,7 +100,9 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                       ),
                     ),
                   ),
+
                   const SizedBox(width: 10),
+
                   SizedBox(
                     width: 52,
                     height: 52,
@@ -99,7 +120,9 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                   ),
                 ],
               ),
+
               const SizedBox(height: 20),
+
               Expanded(
                 child: _items.isEmpty
                     ? const _EmptyShoppingList()
@@ -108,6 +131,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                         separatorBuilder: (_, _) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
                           final item = _items[index];
+
                           return Container(
                             decoration: BoxDecoration(
                               color: Colors.white,
@@ -120,27 +144,34 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                               value: item.isCompleted,
                               activeColor: const Color(0xFF22C55E),
                               controlAffinity: ListTileControlAffinity.leading,
+
                               title: Text(
                                 item.name,
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w600,
                                   decoration: item.isCompleted
                                       ? TextDecoration.lineThrough
-                                      : null,
+                                      : TextDecoration.none,
                                   color: item.isCompleted
                                       ? const Color(0xFF9CA3AF)
                                       : const Color(0xFF1F2937),
                                 ),
                               ),
+
                               secondary: IconButton(
                                 tooltip: 'Sil',
-                                onPressed: () =>
-                                    setState(() => _items.removeAt(index)),
+                                onPressed: () {
+                                  setState(() {
+                                    _items.removeAt(index);
+                                  });
+                                },
                                 icon: const Icon(Icons.close_rounded),
                               ),
-                              onChanged: (value) => setState(
-                                () => item.isCompleted = value ?? false,
-                              ),
+
+                              onChanged: (value) {
+                                setState(() {
+                                  item.isCompleted = value ?? false;
+                                });
+                              },
                             ),
                           );
                         },
@@ -161,7 +192,8 @@ class _EmptyShoppingList extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Center(
       child: Text(
-        'Alışveriş listeniz boş.\nYukarıdan yeni bir ürün ekleyebilirsiniz.',
+        'Alışveriş listeniz boş.\n'
+        'Yukarıdan yeni bir ürün ekleyebilirsiniz.',
         textAlign: TextAlign.center,
         style: TextStyle(color: Color(0xFF6B7280), height: 1.5),
       ),
