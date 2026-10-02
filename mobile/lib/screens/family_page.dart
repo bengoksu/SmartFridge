@@ -2,13 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
+import '../services/api_service.dart';
 
 class FamilyPage extends StatefulWidget {
-  final String accessToken;
-
-  const FamilyPage({super.key, required this.accessToken});
+  const FamilyPage({super.key});
 
   @override
   State<FamilyPage> createState() => _FamilyPageState();
@@ -43,11 +41,7 @@ class _FamilyPageState extends State<FamilyPage> {
     });
 
     try {
-      final response = await http.get(
-        Uri.parse('http://10.0.2.2:8000/api/households/my/'),
-        headers: {'Authorization': 'Bearer ${widget.accessToken}'},
-      );
-
+      final response = await ApiService.instance.get('/api/households/my/');
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
 
@@ -77,12 +71,9 @@ class _FamilyPageState extends State<FamilyPage> {
     }
 
     try {
-      final response = await http.post(
-        Uri.parse('http://10.0.2.2:8000/api/households/create/'),
-        headers: {
-          'Content-Type': 'application/json; charset=UTF-8',
-          'Authorization': 'Bearer ${widget.accessToken}',
-        },
+      final response = await ApiService.instance.post(
+        '/api/households/create/',
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
         body: jsonEncode({'name': name}),
       );
 
@@ -97,7 +88,7 @@ class _FamilyPageState extends State<FamilyPage> {
 
         _showMessage('Aile başarıyla oluşturuldu.');
       } else {
-        _showMessage('Aile oluşturulamadı.');
+        _showMessage('Aile oluşturulamadı: ${response.statusCode}');
       }
     } catch (e) {
       _showMessage('Sunucuya bağlanılamadı.');
@@ -113,12 +104,9 @@ class _FamilyPageState extends State<FamilyPage> {
     }
 
     try {
-      final response = await http.post(
-        Uri.parse('http://10.0.2.2:8000/api/households/join/'),
-        headers: {
-          'Content-Type': 'application/json; charset=UTF-8',
-          'Authorization': 'Bearer ${widget.accessToken}',
-        },
+      final response = await ApiService.instance.post(
+        '/api/households/join/',
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
         body: jsonEncode({'invite_code': inviteCode}),
       );
 
@@ -176,7 +164,8 @@ class _FamilyPageState extends State<FamilyPage> {
     final inviteCode = _household?['invite_code']?.toString() ?? '';
 
     final members = _household?['members'] as List<dynamic>? ?? [];
-
+    final memberUsernames =
+        _household?['member_usernames'] as List<dynamic>? ?? [];
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
 
@@ -226,6 +215,32 @@ class _FamilyPageState extends State<FamilyPage> {
                 Text(
                   '${members.length} aile üyesi',
                   style: const TextStyle(color: Color(0xFF6B7280)),
+                ),
+
+                const SizedBox(height: 16),
+
+                const Text(
+                  'Aile Üyeleri',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+
+                const SizedBox(height: 8),
+
+                ...memberUsernames.map(
+                  (username) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.person_outline_rounded,
+                          size: 20,
+                          color: Color(0xFF22C55E),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(username.toString()),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -330,7 +345,7 @@ class _FamilyPageState extends State<FamilyPage> {
             controller: _familyNameController,
 
             decoration: InputDecoration(
-              hintText: 'Örn. Balaban Ailesi',
+              hintText: 'Örn. ... Ailesi ',
               filled: true,
               fillColor: Colors.white,
 

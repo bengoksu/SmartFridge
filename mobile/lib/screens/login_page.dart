@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'home_page.dart';
 import 'register_page.dart';
+import '../services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -55,6 +56,8 @@ class _LoginPageState extends State<LoginPage> {
           return;
         }
 
+        await AuthService.instance.saveTokens(accessToken, refreshToken);
+
         if (!mounted) return;
 
         ScaffoldMessenger.of(
@@ -64,9 +67,7 @@ class _LoginPageState extends State<LoginPage> {
 
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (context) => HomePage(accessToken: accessToken),
-          ),
+          MaterialPageRoute(builder: (context) => HomePage(username: username)),
         );
       } else {
         setState(() {

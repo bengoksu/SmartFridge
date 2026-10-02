@@ -4,11 +4,12 @@ import 'add_product_page.dart';
 import 'fridge_page.dart';
 import 'shopping_list_page.dart';
 import 'family_page.dart';
+import 'profile_page.dart';
 
 class HomePage extends StatelessWidget {
-  final String accessToken;
+  final String username;
 
-  const HomePage({super.key, required this.accessToken});
+  const HomePage({super.key, required this.username});
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +30,19 @@ class HomePage extends StatelessWidget {
             onPressed: () {},
             icon: const Icon(Icons.notifications_none),
           ),
+
+          IconButton(
+            icon: const Icon(Icons.account_circle_outlined),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProfilePage(username: username),
+                ),
+              );
+            },
+          ),
+
           const SizedBox(width: 8),
         ],
       ),
@@ -99,8 +113,7 @@ class HomePage extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            FridgePage(accessToken: accessToken),
+                        builder: (context) => const FridgePage(),
                       ),
                     );
                   },
@@ -113,8 +126,7 @@ class HomePage extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            AddProductPage(accessToken: accessToken),
+                        builder: (context) => const AddProductPage(),
                       ),
                     );
                   },
@@ -140,8 +152,7 @@ class HomePage extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            FamilyPage(accessToken: accessToken),
+                        builder: (context) => const FamilyPage(),
                       ),
                     );
                   },

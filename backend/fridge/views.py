@@ -10,7 +10,21 @@ class ProductListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Product.objects.filter(owner=self.request.user).order_by('expiry_date')
+        household = self.request.user.households.first()
+
+        if household:
+            return Product.objects.filter(
+                household=household
+            ).order_by('expiry_date')
+
+        return Product.objects.filter(
+            owner=self.request.user
+        ).order_by('expiry_date')
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        household = self.request.user.households.first()
+
+        serializer.save(
+            owner=self.request.user,
+            household=household
+        )

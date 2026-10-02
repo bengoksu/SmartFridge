@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../services/api_service.dart';
 
 class AddProductPage extends StatefulWidget {
-  final String accessToken;
-
-  const AddProductPage({super.key, required this.accessToken});
+  const AddProductPage({super.key});
 
   @override
   State<AddProductPage> createState() => _AddProductPageState();
@@ -57,12 +55,11 @@ class _AddProductPageState extends State<AddProductPage> {
     setState(() => isSaving = true);
 
     try {
-      final response = await http.post(
-        Uri.parse('http://10.0.2.2:8000/api/fridge/products/'),
+      final response = await ApiService.instance.post(
+        '/api/fridge/products/',
         headers: {
           'Content-Type': 'application/json; charset=UTF-8',
           'Accept': 'application/json; charset=UTF-8',
-          'Authorization': 'Bearer ${widget.accessToken}',
         },
         body: utf8.encode(
           jsonEncode({

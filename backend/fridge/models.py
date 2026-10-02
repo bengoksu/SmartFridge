@@ -1,8 +1,7 @@
-from django.db import models
-
-# Create your models here.
 from django.conf import settings
 from django.db import models
+
+from households.models import Household
 
 
 class Product(models.Model):
@@ -15,6 +14,14 @@ class Product(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='fridge_products'
+    )
+
+    household = models.ForeignKey(
+        Household,
+        on_delete=models.CASCADE,
+        related_name='products',
+        null=True,
+        blank=True
     )
 
     created_at = models.DateTimeField(auto_now_add=True)

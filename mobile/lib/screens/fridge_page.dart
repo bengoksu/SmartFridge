@@ -1,12 +1,10 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import '../services/api_service.dart';
 
 class FridgePage extends StatefulWidget {
-  final String accessToken;
-
-  const FridgePage({super.key, required this.accessToken});
+  const FridgePage({super.key});
 
   @override
   State<FridgePage> createState() => _FridgePageState();
@@ -60,12 +58,9 @@ class _FridgePageState extends State<FridgePage>
     );
 
     try {
-      final response = await http.get(
-        Uri.parse('http://10.0.2.2:8000/api/fridge/products/'),
-        headers: {
-          'Accept': 'application/json; charset=UTF-8',
-          'Authorization': 'Bearer ${widget.accessToken}',
-        },
+      final response = await ApiService.instance.get(
+        '/api/fridge/products/',
+        headers: {'Accept': 'application/json; charset=UTF-8'},
       );
 
       if (response.statusCode != 200) {

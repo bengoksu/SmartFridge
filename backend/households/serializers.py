@@ -8,6 +8,8 @@ class HouseholdSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
+    member_usernames = serializers.SerializerMethodField()
+
     class Meta:
         model = Household
         fields = [
@@ -16,10 +18,22 @@ class HouseholdSerializer(serializers.ModelSerializer):
             'owner',
             'owner_username',
             'members',
+            'member_usernames',
             'invite_code',
             'created_at',
         ]
-        read_only_fields = ['owner', 'members','invite_code' ,'created_at']
+
+        read_only_fields = [
+            'owner',
+            'members',
+            'invite_code',
+            'created_at',
+        ]
+
+    def get_member_usernames(self, obj):
+        return list(
+            obj.members.values_list('username', flat=True)
+        )
 
 
 class JoinHouseholdSerializer(serializers.Serializer):
