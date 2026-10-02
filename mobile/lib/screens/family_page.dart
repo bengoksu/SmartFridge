@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:share_plus/share_plus.dart';
 
 class FamilyPage extends StatefulWidget {
   final String accessToken;
@@ -86,11 +87,15 @@ class _FamilyPageState extends State<FamilyPage> {
       );
 
       if (response.statusCode == 201) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+
+        setState(() {
+          _household = data;
+        });
+
         _familyNameController.clear();
 
         _showMessage('Aile başarıyla oluşturuldu.');
-
-        await _loadMyHousehold();
       } else {
         _showMessage('Aile oluşturulamadı.');
       }
@@ -263,6 +268,19 @@ class _FamilyPageState extends State<FamilyPage> {
                   },
 
                   icon: const Icon(Icons.copy_rounded),
+                ),
+                IconButton(
+                  tooltip: 'Paylaş',
+                  onPressed: () {
+                    SharePlus.instance.share(
+                      ShareParams(
+                        text:
+                            'SmartFridge aileme katıl!\n\n'
+                            'Davet kodu: $inviteCode',
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.share_rounded),
                 ),
               ],
             ),
