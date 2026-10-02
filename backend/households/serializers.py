@@ -19,7 +19,8 @@ class HouseholdSerializer(serializers.ModelSerializer):
             'invite_code',
             'created_at',
         ]
-        read_only_fields = ['owner', 'members', 'created_at']
+        read_only_fields = ['owner', 'members','invite_code' ,'created_at']
+
 
 class JoinHouseholdSerializer(serializers.Serializer):
     invite_code = serializers.UUIDField()

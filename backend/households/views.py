@@ -49,3 +49,12 @@ class JoinHouseholdView(APIView):
             },
             status=status.HTTP_200_OK
         )
+class MyHouseholdView(generics.ListAPIView):
+    serializer_class = HouseholdSerializer
+    permission_classes = [IsAuthenticated]
+
+def get_queryset(self):
+    return Household.objects.filter(
+        members=self.request.user
+    ).distinct()
+ 

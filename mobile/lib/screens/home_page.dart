@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'add_product_page.dart';
 import 'fridge_page.dart';
 import 'shopping_list_page.dart';
+import 'family_page.dart';
 
 class HomePage extends StatelessWidget {
   final String accessToken;
@@ -131,10 +132,19 @@ class HomePage extends StatelessWidget {
                     );
                   },
                 ),
-                const _HomeCard(
-                  icon: Icons.groups_outlined,
+                _HomeCard(
+                  icon: Icons.family_restroom_outlined,
                   title: 'Ailem',
-                  subtitle: 'Ortak buzdolabı',
+                  subtitle: 'Aile üyelerini görüntüle',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            FamilyPage(accessToken: accessToken),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
