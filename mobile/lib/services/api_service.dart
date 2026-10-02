@@ -27,6 +27,24 @@ class ApiService {
     headers: headers,
   );
 
+  Future<http.Response> patchMultipart(
+    String path, {
+    required Map<String, String> fields,
+    List<int>? fileBytes,
+    String? fileName,
+    String fileField = 'avatar',
+  }) => _send((requestHeaders) async {
+    final request = http.MultipartRequest('PATCH', _uri(path))
+      ..headers.addAll(requestHeaders)
+      ..fields.addAll(fields);
+    if (fileBytes != null && fileName != null) {
+      request.files.add(
+        http.MultipartFile.fromBytes(fileField, fileBytes, filename: fileName),
+      );
+    }
+    return http.Response.fromStream(await request.send());
+  });
+
   Uri _uri(String path) => Uri.parse(
     path.startsWith('http')
         ? path

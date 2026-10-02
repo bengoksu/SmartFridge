@@ -126,6 +126,51 @@ class _FamilyPageState extends State<FamilyPage> {
     }
   }
 
+  Future<void> _leaveHousehold({bool creatingNew = false}) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(creatingNew ? 'Yeni aile kur' : 'Aileden ayrıl'),
+        content: Text(
+          creatingNew
+              ? 'Yeni bir aile kurmak için mevcut ailenizden ayrılmanız gerekiyor. Devam edilsin mi?'
+              : 'Bu aileden ayrılmak istediğinizden emin misiniz?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(creatingNew ? 'Devam Et' : 'Ayrıl'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      final response = await ApiService.instance.post('/api/households/leave/');
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        setState(() => _household = null);
+        _showMessage(
+          creatingNew
+              ? 'Şimdi yeni ailenizi oluşturabilirsiniz.'
+              : data['detail'] ?? 'Aileden ayrıldınız.',
+        );
+      } else {
+        _showMessage(data['detail'] ?? 'Aileden ayrılamadınız.');
+      }
+    } catch (_) {
+      _showMessage('Sunucuya bağlanılamadı.');
+    }
+  }
+
   void _showMessage(String message) {
     if (!mounted) return;
 
@@ -306,6 +351,37 @@ class _FamilyPageState extends State<FamilyPage> {
           const Text(
             'Bu kodu aile üyelerinle paylaşabilirsin.',
             style: TextStyle(color: Color(0xFF6B7280)),
+          ),
+
+          const SizedBox(height: 28),
+
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => _leaveHousehold(creatingNew: true),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF22C55E),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              icon: const Icon(Icons.add_home_work_outlined),
+              label: const Text('Yeni Aile Kur'),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _leaveHousehold(),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              icon: const Icon(Icons.logout_rounded),
+              label: const Text('Aileden Ayrıl'),
+            ),
           ),
         ],
       ),

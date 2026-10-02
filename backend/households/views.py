@@ -1,3 +1,4 @@
+from django.db import transaction
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -49,6 +50,38 @@ class JoinHouseholdView(APIView):
             },
             status=status.HTTP_200_OK
         )
+
+
+class LeaveHouseholdView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request):
+        household = Household.objects.filter(members=request.user).first()
+        if household is None:
+            return Response(
+                {'detail': 'Aile üyeliği bulunamadı.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if household.owner_id == request.user.id:
+            new_owner = household.members.exclude(id=request.user.id).first()
+            if new_owner is None:
+                household.delete()
+                return Response(
+                    {'detail': 'Aileden ayrıldınız. Boş kalan aile silindi.'},
+                    status=status.HTTP_200_OK,
+                )
+            household.owner = new_owner
+            household.save(update_fields=['owner'])
+
+        household.members.remove(request.user)
+        return Response(
+            {'detail': 'Aileden başarıyla ayrıldınız.'},
+            status=status.HTTP_200_OK,
+        )
+
+
 class MyHouseholdView(generics.ListAPIView):
     serializer_class = HouseholdSerializer
     permission_classes = [IsAuthenticated]

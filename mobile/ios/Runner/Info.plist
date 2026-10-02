@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Profil fotoğrafı seçebilmek için fotoğraf arşivinize erişim gerekir.</string>
 </dict>
 </plist>
