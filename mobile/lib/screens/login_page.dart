@@ -190,17 +190,6 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 8),
 
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {},
-                    child: const Text(
-                      'Şifremi unuttum',
-                      style: TextStyle(color: Color(0xFF2563EB)),
-                    ),
-                  ),
-                ),
-
                 if (errorMessage != null) ...[
                   const SizedBox(height: 4),
                   Text(

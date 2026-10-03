@@ -1,15 +1,54 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ShoppingListPage extends StatefulWidget {
-  const ShoppingListPage({super.key});
+  final String username;
+
+  const ShoppingListPage({super.key, required this.username});
 
   @override
   State<ShoppingListPage> createState() => _ShoppingListPageState();
 }
 
 class _ShoppingListPageState extends State<ShoppingListPage> {
+  static const _storage = FlutterSecureStorage();
   final _itemController = TextEditingController();
   final List<_ShoppingItem> _items = [];
+
+  String get _storageKey => 'shopping_list_${widget.username}';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadItems();
+  }
+
+  Future<void> _loadItems() async {
+    try {
+      final storedItems = await _storage.read(key: _storageKey);
+      if (storedItems == null) return;
+      final data = jsonDecode(storedItems);
+      if (data is! List || !mounted) return;
+      setState(() {
+        _items
+          ..clear()
+          ..addAll(
+            data.whereType<Map<String, dynamic>>().map(_ShoppingItem.fromJson),
+          );
+      });
+    } catch (_) {
+      // A corrupt local list should not prevent the page from opening.
+    }
+  }
+
+  Future<void> _saveItems() async {
+    await _storage.write(
+      key: _storageKey,
+      value: jsonEncode(_items.map((item) => item.toJson()).toList()),
+    );
+  }
 
   @override
   void dispose() {
@@ -17,7 +56,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
     super.dispose();
   }
 
-  void _addItem() {
+  Future<void> _addItem() async {
     final name = _itemController.text.trim();
 
     if (name.isEmpty) return;
@@ -27,6 +66,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
     });
 
     _itemController.clear();
+    await _saveItems();
   }
 
   @override
@@ -46,10 +86,11 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
         actions: [
           IconButton(
             tooltip: 'Tamamlananları temizle',
-            onPressed: () {
+            onPressed: () async {
               setState(() {
                 _items.removeWhere((item) => item.isCompleted);
               });
+              await _saveItems();
             },
             icon: const Icon(Icons.cleaning_services_outlined),
           ),
@@ -159,18 +200,20 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
 
                               secondary: IconButton(
                                 tooltip: 'Sil',
-                                onPressed: () {
+                                onPressed: () async {
                                   setState(() {
                                     _items.removeAt(index);
                                   });
+                                  await _saveItems();
                                 },
                                 icon: const Icon(Icons.close_rounded),
                               ),
 
-                              onChanged: (value) {
+                              onChanged: (value) async {
                                 setState(() {
                                   item.isCompleted = value ?? false;
                                 });
+                                await _saveItems();
                               },
                             ),
                           );
@@ -203,7 +246,14 @@ class _EmptyShoppingList extends StatelessWidget {
 
 class _ShoppingItem {
   final String name;
-  bool isCompleted = false;
+  bool isCompleted;
 
-  _ShoppingItem(this.name);
+  _ShoppingItem(this.name, {this.isCompleted = false});
+
+  factory _ShoppingItem.fromJson(Map<String, dynamic> json) => _ShoppingItem(
+    json['name']?.toString() ?? '',
+    isCompleted: json['is_completed'] == true,
+  );
+
+  Map<String, dynamic> toJson() => {'name': name, 'is_completed': isCompleted};
 }
