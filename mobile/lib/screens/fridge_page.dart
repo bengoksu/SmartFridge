@@ -134,9 +134,21 @@ class _FridgePageState extends State<FridgePage>
           ),
           actions: [
             TextButton(
+              onPressed: () async {
+                Navigator.pop(dialogContext);
+                await _deleteProduct(product);
+              },
+              child: const Text(
+                'Sil',
+                style: TextStyle(color: Colors.redAccent),
+              ),
+            ),
+
+            TextButton(
               onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Vazgeç'),
             ),
+
             ElevatedButton(
               onPressed: () async {
                 final response = await ApiService.instance.patch(
@@ -155,9 +167,6 @@ class _FridgePageState extends State<FridgePage>
 
                 if (!mounted) return;
 
-                debugPrint('PATCH STATUS: ${response.statusCode}');
-                debugPrint('PATCH BODY: ${response.body}');
-
                 if (response.statusCode == 200) {
                   Navigator.pop(dialogContext);
                   await _loadProducts();
@@ -165,7 +174,7 @@ class _FridgePageState extends State<FridgePage>
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        'Güncelleme başarısız: ${response.statusCode} - ${response.body}',
+                        'Güncelleme başarısız: ${response.statusCode}',
                       ),
                     ),
                   );
@@ -227,6 +236,82 @@ class _FridgePageState extends State<FridgePage>
     }
   }
 
+  Future<void> _consumeProduct(_Product product) async {
+    final addToShopping = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Ürün tükendi'),
+          content: Text('${product.name} alışveriş listesine eklensin mi?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Hayır'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Evet, ekle'),
+            ),
+          ],
+        );
+      },
+    );
+
+    // Kullanıcı pencereyi dışarıdan kapattıysa hiçbir şey yapma.
+    if (addToShopping == null) return;
+
+    // Evet dediyse önce alışveriş listesine ekle.
+    if (addToShopping) {
+      final shoppingResponse = await ApiService.instance.post(
+        '/api/shopping/items/',
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'name': product.name}),
+      );
+
+      if (!mounted) return;
+
+      if (shoppingResponse.statusCode != 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${product.name} alışveriş listesine eklenemedi.'),
+          ),
+        );
+        return;
+      }
+    }
+
+    // Ürünü buzdolabından kaldır.
+    final deleteResponse = await ApiService.instance.delete(
+      '/api/fridge/products/${product.id}/',
+    );
+
+    if (!mounted) return;
+
+    if (deleteResponse.statusCode == 204) {
+      await _loadProducts();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            addToShopping
+                ? '${product.name} tükendi ve alışveriş listesine eklendi.'
+                : '${product.name} buzdolabından kaldırıldı.',
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Ürün buzdolabından kaldırılamadı: ${deleteResponse.statusCode}',
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -283,7 +368,7 @@ class _FridgePageState extends State<FridgePage>
                             ? _ProductContent(
                                 products: _products,
                                 onEdit: _showEditProductDialog,
-                                onDelete: _deleteProduct,
+                                onConsumed: _consumeProduct,
                               )
                             : _LoadError(onRetry: _loadProducts),
                       ),
@@ -535,12 +620,12 @@ class _FridgeLogo extends StatelessWidget {
 class _ProductContent extends StatelessWidget {
   final List<_Product> products;
   final void Function(_Product product) onEdit;
-  final void Function(_Product product) onDelete;
+  final void Function(_Product product) onConsumed;
 
   const _ProductContent({
     required this.products,
     required this.onEdit,
-    required this.onDelete,
+    required this.onConsumed,
   });
 
   @override
@@ -611,7 +696,7 @@ class _ProductContent extends StatelessWidget {
                 child: _ProductCard(
                   product: entry.value,
                   onEdit: () => onEdit(entry.value),
-                  onDelete: () => onDelete(entry.value),
+                  onConsumed: () => onConsumed(entry.value),
                 ),
               ),
             ),
@@ -624,12 +709,12 @@ class _ProductContent extends StatelessWidget {
 class _ProductCard extends StatelessWidget {
   final _Product product;
   final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback onConsumed;
 
   const _ProductCard({
     required this.product,
     required this.onEdit,
-    required this.onDelete,
+    required this.onConsumed,
   });
 
   @override
@@ -701,14 +786,10 @@ class _ProductCard extends StatelessWidget {
             ),
           ),
 
-          IconButton(
-            tooltip: 'Ürünü sil',
-            onPressed: onDelete,
-            icon: const Icon(
-              Icons.delete_outline_rounded,
-              size: 20,
-              color: Colors.redAccent,
-            ),
+          TextButton.icon(
+            onPressed: onConsumed,
+            icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+            label: const Text('Tükendi'),
           ),
           const SizedBox(width: 6),
         ],
