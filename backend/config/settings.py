@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'households',
     'fridge',
     'ai_assistant',
+    'shopping',
 ]
 
 MIDDLEWARE = [

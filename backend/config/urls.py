@@ -9,6 +9,7 @@ urlpatterns = [
     path('api/households/', include('households.urls')),
     path('api/fridge/', include('fridge.urls')),
     path('api/ai/', include('ai_assistant.urls')),
+        path('api/shopping/', include('shopping.urls')),
 ]
 
 if settings.DEBUG:

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../services/api_service.dart';
 
 class ShoppingListPage extends StatefulWidget {
   final String username;
@@ -13,11 +13,9 @@ class ShoppingListPage extends StatefulWidget {
 }
 
 class _ShoppingListPageState extends State<ShoppingListPage> {
-  static const _storage = FlutterSecureStorage();
-  final _itemController = TextEditingController();
   final List<_ShoppingItem> _items = [];
-
-  String get _storageKey => 'shopping_list_${widget.username}';
+  bool _isLoading = true;
+  final _itemController = TextEditingController();
 
   @override
   void initState() {
@@ -27,10 +25,14 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
 
   Future<void> _loadItems() async {
     try {
-      final storedItems = await _storage.read(key: _storageKey);
-      if (storedItems == null) return;
-      final data = jsonDecode(storedItems);
+      final response = await ApiService.instance.get('/api/shopping/items/');
+
+      if (response.statusCode != 200) return;
+
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+
       if (data is! List || !mounted) return;
+
       setState(() {
         _items
           ..clear()
@@ -38,16 +40,13 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
             data.whereType<Map<String, dynamic>>().map(_ShoppingItem.fromJson),
           );
       });
-    } catch (_) {
-      // A corrupt local list should not prevent the page from opening.
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
-  }
-
-  Future<void> _saveItems() async {
-    await _storage.write(
-      key: _storageKey,
-      value: jsonEncode(_items.map((item) => item.toJson()).toList()),
-    );
   }
 
   @override
@@ -61,12 +60,23 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
 
     if (name.isEmpty) return;
 
-    setState(() {
-      _items.add(_ShoppingItem(name));
-    });
+    final response = await ApiService.instance.post(
+      '/api/shopping/items/',
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'name': name}),
+    );
 
-    _itemController.clear();
-    await _saveItems();
+    if (response.statusCode == 201) {
+      _itemController.clear();
+
+      await _loadItems();
+    } else {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ürün eklenemedi: ${response.statusCode}')),
+      );
+    }
   }
 
   @override
@@ -87,10 +97,17 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
           IconButton(
             tooltip: 'Tamamlananları temizle',
             onPressed: () async {
-              setState(() {
-                _items.removeWhere((item) => item.isCompleted);
-              });
-              await _saveItems();
+              final completedItems = _items
+                  .where((item) => item.isCompleted)
+                  .toList();
+
+              for (final item in completedItems) {
+                await ApiService.instance.delete(
+                  '/api/shopping/items/${item.id}/',
+                );
+              }
+
+              await _loadItems();
             },
             icon: const Icon(Icons.cleaning_services_outlined),
           ),
@@ -201,19 +218,55 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                               secondary: IconButton(
                                 tooltip: 'Sil',
                                 onPressed: () async {
-                                  setState(() {
-                                    _items.removeAt(index);
-                                  });
-                                  await _saveItems();
+                                  final response = await ApiService.instance
+                                      .delete(
+                                        '/api/shopping/items/${item.id}/',
+                                      );
+
+                                  if (response.statusCode == 204) {
+                                    await _loadItems();
+                                  } else {
+                                    if (!context.mounted) return;
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Ürün silinemedi: ${response.statusCode}',
+                                        ),
+                                      ),
+                                    );
+                                  }
                                 },
                                 icon: const Icon(Icons.close_rounded),
                               ),
 
                               onChanged: (value) async {
-                                setState(() {
-                                  item.isCompleted = value ?? false;
-                                });
-                                await _saveItems();
+                                final newValue = value ?? false;
+
+                                final response = await ApiService.instance
+                                    .patch(
+                                      '/api/shopping/items/${item.id}/',
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                      },
+                                      body: jsonEncode({
+                                        'is_completed': newValue,
+                                      }),
+                                    );
+
+                                if (response.statusCode == 200) {
+                                  await _loadItems();
+                                } else {
+                                  if (!context.mounted) return;
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Ürün güncellenemedi: ${response.statusCode}',
+                                      ),
+                                    ),
+                                  );
+                                }
                               },
                             ),
                           );
@@ -245,15 +298,21 @@ class _EmptyShoppingList extends StatelessWidget {
 }
 
 class _ShoppingItem {
+  final int id;
   final String name;
   bool isCompleted;
 
-  _ShoppingItem(this.name, {this.isCompleted = false});
+  _ShoppingItem({
+    required this.id,
+    required this.name,
+    this.isCompleted = false,
+  });
 
-  factory _ShoppingItem.fromJson(Map<String, dynamic> json) => _ShoppingItem(
-    json['name']?.toString() ?? '',
-    isCompleted: json['is_completed'] == true,
-  );
-
-  Map<String, dynamic> toJson() => {'name': name, 'is_completed': isCompleted};
+  factory _ShoppingItem.fromJson(Map<String, dynamic> json) {
+    return _ShoppingItem(
+      id: json['id'] as int,
+      name: json['name']?.toString() ?? '',
+      isCompleted: json['is_completed'] == true,
+    );
+  }
 }
