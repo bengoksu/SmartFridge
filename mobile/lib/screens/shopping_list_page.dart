@@ -79,6 +79,145 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
     }
   }
 
+  Future<void> _handleItemToggle(_ShoppingItem item, bool newValue) async {
+    if (newValue) {
+      final addToFridge = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Ürün satın alındı'),
+            content: Text('${item.name} buzdolabına eklensin mi?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Hayır'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Evet'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (addToFridge == true) {
+        final quantityController = TextEditingController(text: '1');
+        final unitController = TextEditingController(text: 'adet');
+        final expiryController = TextEditingController();
+
+        final shouldAdd = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) {
+            return AlertDialog(
+              title: Text('${item.name} buzdolabına eklensin'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: quantityController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Miktar'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: unitController,
+                      decoration: const InputDecoration(
+                        labelText: 'Birim',
+                        hintText: 'adet, paket, kg, litre...',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: expiryController,
+                      readOnly: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Son kullanma tarihi',
+                        hintText: 'Tarih seç',
+                        suffixIcon: Icon(Icons.calendar_month_outlined),
+                      ),
+                      onTap: () async {
+                        final selectedDate = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime.now().add(
+                            const Duration(days: 3650),
+                          ),
+                        );
+
+                        if (selectedDate != null) {
+                          expiryController.text =
+                              '${selectedDate.year}-'
+                              '${selectedDate.month.toString().padLeft(2, '0')}-'
+                              '${selectedDate.day.toString().padLeft(2, '0')}';
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Vazgeç'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  child: const Text('Buzdolabına Ekle'),
+                ),
+              ],
+            );
+          },
+        );
+
+        if (shouldAdd == true) {
+          final fridgeResponse = await ApiService.instance.post(
+            '/api/fridge/products/',
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'name': item.name,
+              'quantity': int.tryParse(quantityController.text.trim()) ?? 1,
+              'unit': unitController.text.trim(),
+              'expiry_date': expiryController.text.trim().isEmpty
+                  ? null
+                  : expiryController.text.trim(),
+            }),
+          );
+
+          if (!mounted) return;
+
+          if (fridgeResponse.statusCode == 201) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('${item.name} buzdolabına eklendi.')),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Buzdolabına eklenemedi: ${fridgeResponse.statusCode}',
+                ),
+              ),
+            );
+
+            return;
+          }
+        }
+      }
+    }
+
+    final response = await ApiService.instance.patch(
+      '/api/shopping/items/${item.id}/',
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'is_completed': newValue}),
+    );
+
+    if (response.statusCode == 200) {
+      await _loadItems();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final remaining = _items.where((item) => !item.isCompleted).length;
@@ -240,33 +379,9 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                                 icon: const Icon(Icons.close_rounded),
                               ),
 
-                              onChanged: (value) async {
+                              onChanged: (value) {
                                 final newValue = value ?? false;
-
-                                final response = await ApiService.instance
-                                    .patch(
-                                      '/api/shopping/items/${item.id}/',
-                                      headers: {
-                                        'Content-Type': 'application/json',
-                                      },
-                                      body: jsonEncode({
-                                        'is_completed': newValue,
-                                      }),
-                                    );
-
-                                if (response.statusCode == 200) {
-                                  await _loadItems();
-                                } else {
-                                  if (!context.mounted) return;
-
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Ürün güncellenemedi: ${response.statusCode}',
-                                      ),
-                                    ),
-                                  );
-                                }
+                                _handleItemToggle(item, newValue);
                               },
                             ),
                           );
