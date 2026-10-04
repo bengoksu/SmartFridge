@@ -179,6 +179,54 @@ class _FridgePageState extends State<FridgePage>
     );
   }
 
+  Future<void> _deleteProduct(_Product product) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Ürünü sil'),
+          content: Text(
+            '${product.name} ürününü silmek istediğine emin misin?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Vazgeç'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Sil'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete != true) return;
+
+    final response = await ApiService.instance.delete(
+      '/api/fridge/products/${product.id}/',
+    );
+
+    if (!mounted) return;
+
+    if (response.statusCode == 204) {
+      await _loadProducts();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${product.name} silindi.')));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Silme işlemi başarısız: ${response.statusCode}'),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -235,6 +283,7 @@ class _FridgePageState extends State<FridgePage>
                             ? _ProductContent(
                                 products: _products,
                                 onEdit: _showEditProductDialog,
+                                onDelete: _deleteProduct,
                               )
                             : _LoadError(onRetry: _loadProducts),
                       ),
@@ -486,8 +535,13 @@ class _FridgeLogo extends StatelessWidget {
 class _ProductContent extends StatelessWidget {
   final List<_Product> products;
   final void Function(_Product product) onEdit;
+  final void Function(_Product product) onDelete;
 
-  const _ProductContent({required this.products, required this.onEdit});
+  const _ProductContent({
+    required this.products,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -557,6 +611,7 @@ class _ProductContent extends StatelessWidget {
                 child: _ProductCard(
                   product: entry.value,
                   onEdit: () => onEdit(entry.value),
+                  onDelete: () => onDelete(entry.value),
                 ),
               ),
             ),
@@ -569,8 +624,13 @@ class _ProductContent extends StatelessWidget {
 class _ProductCard extends StatelessWidget {
   final _Product product;
   final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
-  const _ProductCard({required this.product, required this.onEdit});
+  const _ProductCard({
+    required this.product,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -629,7 +689,6 @@ class _ProductCard extends StatelessWidget {
               ),
             ),
           ),
-
           const SizedBox(width: 6),
 
           IconButton(
@@ -641,6 +700,17 @@ class _ProductCard extends StatelessWidget {
               color: Color(0xFF526158),
             ),
           ),
+
+          IconButton(
+            tooltip: 'Ürünü sil',
+            onPressed: onDelete,
+            icon: const Icon(
+              Icons.delete_outline_rounded,
+              size: 20,
+              color: Colors.redAccent,
+            ),
+          ),
+          const SizedBox(width: 6),
         ],
       ),
     );
