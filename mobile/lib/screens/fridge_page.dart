@@ -84,6 +84,101 @@ class _FridgePageState extends State<FridgePage>
     await _controller.forward();
   }
 
+  Future<void> _showEditProductDialog(_Product product) async {
+    final nameController = TextEditingController(text: product.name);
+    final quantityController = TextEditingController(
+      text: product.quantity.toString(),
+    );
+    final unitController = TextEditingController(text: product.unit);
+    final expiryController = TextEditingController(
+      text: product.expiryDate ?? '',
+    );
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Ürünü Güncelle'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Ürün adı'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: quantityController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Miktar'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: unitController,
+                  decoration: const InputDecoration(
+                    labelText: 'Birim',
+                    hintText: 'adet, paket, litre...',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: expiryController,
+                  decoration: const InputDecoration(
+                    labelText: 'Son kullanma tarihi',
+                    hintText: '2026-10-15',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Vazgeç'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final response = await ApiService.instance.patch(
+                  '/api/fridge/products/${product.id}/',
+                  headers: {'Content-Type': 'application/json'},
+                  body: jsonEncode({
+                    'name': nameController.text.trim(),
+                    'quantity':
+                        int.tryParse(quantityController.text.trim()) ?? 1,
+                    'unit': unitController.text.trim(),
+                    'expiry_date': expiryController.text.trim().isEmpty
+                        ? null
+                        : expiryController.text.trim(),
+                  }),
+                );
+
+                if (!mounted) return;
+
+                debugPrint('PATCH STATUS: ${response.statusCode}');
+                debugPrint('PATCH BODY: ${response.body}');
+
+                if (response.statusCode == 200) {
+                  Navigator.pop(dialogContext);
+                  await _loadProducts();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Güncelleme başarısız: ${response.statusCode} - ${response.body}',
+                      ),
+                    ),
+                  );
+                }
+              },
+              child: const Text('Güncelle'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -137,7 +232,10 @@ class _FridgePageState extends State<FridgePage>
                       child: Transform.translate(
                         offset: Offset(0, 28 * (1 - _listEntrance.value)),
                         child: _loadError == null
-                            ? _ProductContent(products: _products)
+                            ? _ProductContent(
+                                products: _products,
+                                onEdit: _showEditProductDialog,
+                              )
                             : _LoadError(onRetry: _loadProducts),
                       ),
                     ),
@@ -387,8 +485,9 @@ class _FridgeLogo extends StatelessWidget {
 
 class _ProductContent extends StatelessWidget {
   final List<_Product> products;
+  final void Function(_Product product) onEdit;
 
-  const _ProductContent({required this.products});
+  const _ProductContent({required this.products, required this.onEdit});
 
   @override
   Widget build(BuildContext context) {
@@ -455,7 +554,10 @@ class _ProductContent extends StatelessWidget {
                     child: child,
                   ),
                 ),
-                child: _ProductCard(product: entry.value),
+                child: _ProductCard(
+                  product: entry.value,
+                  onEdit: () => onEdit(entry.value),
+                ),
               ),
             ),
         ],
@@ -466,8 +568,9 @@ class _ProductContent extends StatelessWidget {
 
 class _ProductCard extends StatelessWidget {
   final _Product product;
+  final VoidCallback onEdit;
 
-  const _ProductCard({required this.product});
+  const _ProductCard({required this.product, required this.onEdit});
 
   @override
   Widget build(BuildContext context) {
@@ -526,6 +629,18 @@ class _ProductCard extends StatelessWidget {
               ),
             ),
           ),
+
+          const SizedBox(width: 6),
+
+          IconButton(
+            tooltip: 'Ürünü güncelle',
+            onPressed: onEdit,
+            icon: const Icon(
+              Icons.edit_outlined,
+              size: 20,
+              color: Color(0xFF526158),
+            ),
+          ),
         ],
       ),
     );
@@ -533,22 +648,31 @@ class _ProductCard extends StatelessWidget {
 }
 
 class _Product {
+  final int id;
   final String name;
-  final String expiry;
-  final String amount;
+  final int quantity;
+  final String unit;
+  final String? expiryDate;
 
-  const _Product(this.name, this.expiry, this.amount);
+  const _Product({
+    required this.id,
+    required this.name,
+    required this.quantity,
+    required this.unit,
+    required this.expiryDate,
+  });
+
+  String get amount => unit.isEmpty ? '$quantity adet' : '$quantity $unit';
+
+  String get expiry => _formatDate(expiryDate);
 
   factory _Product.fromJson(Map<String, dynamic> json) {
-    final name = json['name'] as String? ?? 'İsimsiz ürün';
-    final quantity = json['quantity']?.toString() ?? '1';
-    final unit = (json['unit'] as String?)?.trim() ?? '';
-    final rawDate = json['expiry_date'] as String?;
-
     return _Product(
-      name,
-      _formatDate(rawDate),
-      unit.isEmpty ? '$quantity adet' : '$quantity $unit',
+      id: json['id'] as int,
+      name: json['name']?.toString() ?? 'İsimsiz ürün',
+      quantity: int.tryParse(json['quantity']?.toString() ?? '1') ?? 1,
+      unit: json['unit']?.toString().trim() ?? '',
+      expiryDate: json['expiry_date']?.toString(),
     );
   }
 

@@ -28,3 +28,19 @@ class ProductListCreateView(generics.ListCreateAPIView):
             owner=self.request.user,
             household=household
         )
+
+class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = ProductSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        household = self.request.user.households.first()
+
+        if household:
+            return Product.objects.filter(
+                household=household
+            )
+
+        return Product.objects.filter(
+            owner=self.request.user
+        )        
