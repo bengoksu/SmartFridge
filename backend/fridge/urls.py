@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    BarcodeLookupView,
     ProductListCreateView,
     ProductDetailView,
 )
@@ -15,5 +16,10 @@ urlpatterns = [
         'products/<int:pk>/',
         ProductDetailView.as_view(),
         name='product-detail',
+    ),
+    path(
+        'barcode/<str:barcode>/',
+        BarcodeLookupView.as_view(),
+        name='barcode-lookup',
     ),
 ]

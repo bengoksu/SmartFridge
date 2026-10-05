@@ -262,13 +262,13 @@ class _HomePageState extends State<HomePage> {
                                           ),
                                         );
 
-                                    if (!mounted) return;
+                                    if (!context.mounted) return;
 
                                     if (barcode != null) {
                                       final response = await ApiService.instance
                                           .get('/api/fridge/barcode/$barcode/');
 
-                                      if (!mounted) return;
+                                      if (!context.mounted) return;
 
                                       if (response.statusCode == 200) {
                                         final data = jsonDecode(
@@ -279,8 +279,13 @@ class _HomePageState extends State<HomePage> {
                                             data['name']?.toString() ?? '';
                                         final brand =
                                             data['brand']?.toString() ?? '';
-                                        final quantity =
-                                            data['quantity']?.toString() ?? '';
+                                        final quantityText =
+                                            data['quantity_text']?.toString() ??
+                                            '';
+                                        final initialQuantity = data['quantity']
+                                            ?.toString();
+                                        final initialUnit = data['unit']
+                                            ?.toString();
 
                                         showDialog(
                                           context: context,
@@ -306,9 +311,12 @@ class _HomePageState extends State<HomePage> {
                                                     const SizedBox(height: 8),
                                                     Text('Marka: $brand'),
                                                   ],
-                                                  if (quantity.isNotEmpty) ...[
+                                                  if (quantityText
+                                                      .isNotEmpty) ...[
                                                     const SizedBox(height: 8),
-                                                    Text('Paket: $quantity'),
+                                                    Text(
+                                                      'Paket: $quantityText',
+                                                    ),
                                                   ],
                                                   const SizedBox(height: 8),
                                                   Text('Barkod: $barcode'),
@@ -324,6 +332,10 @@ class _HomePageState extends State<HomePage> {
                                                     _openPage(
                                                       AddProductPage(
                                                         initialName: name,
+                                                        initialQuantity:
+                                                            initialQuantity,
+                                                        initialUnit:
+                                                            initialUnit,
                                                       ),
                                                     );
                                                   },

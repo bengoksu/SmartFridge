@@ -4,8 +4,15 @@ import '../services/api_service.dart';
 
 class AddProductPage extends StatefulWidget {
   final String? initialName;
+  final String? initialQuantity;
+  final String? initialUnit;
 
-  const AddProductPage({super.key, this.initialName});
+  const AddProductPage({
+    super.key,
+    this.initialName,
+    this.initialQuantity,
+    this.initialUnit,
+  });
 
   @override
   State<AddProductPage> createState() => _AddProductPageState();
@@ -24,6 +31,14 @@ class _AddProductPageState extends State<AddProductPage> {
 
     if (widget.initialName != null) {
       nameController.text = widget.initialName!;
+    }
+
+    if (widget.initialQuantity != null) {
+      quantityController.text = widget.initialQuantity!;
+    }
+
+    if (widget.initialUnit != null) {
+      unitController.text = widget.initialUnit!;
     }
   }
 

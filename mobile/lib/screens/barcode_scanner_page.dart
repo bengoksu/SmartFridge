@@ -15,7 +15,7 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
     if (_isDetected) return;
 
     final barcode = capture.barcodes.firstOrNull;
-    final code = barcode?.rawValue;
+    final code = barcode?.rawValue?.trim();
 
     if (code == null || code.isEmpty) return;
 
