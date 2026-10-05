@@ -10,6 +10,7 @@ import 'shopping_list_page.dart';
 import 'family_page.dart';
 import 'profile_page.dart';
 import 'recipe_result_page.dart';
+import 'barcode_scanner_page.dart';
 
 class HomePage extends StatefulWidget {
   final String username;
@@ -203,7 +204,226 @@ class _HomePageState extends State<HomePage> {
                   title: 'Ürün Ekle',
                   subtitle: 'Yeni ürün ekle',
                   onTap: () {
-                    _openPage(const AddProductPage());
+                    showModalBottomSheet(
+                      context: context,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(24),
+                        ),
+                      ),
+                      builder: (sheetContext) {
+                        return SafeArea(
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Ürün nasıl eklensin?',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 20),
+
+                                ListTile(
+                                  leading: const Icon(Icons.edit_outlined),
+                                  title: const Text('Manuel Ekle'),
+                                  subtitle: const Text(
+                                    'Ürün bilgilerini kendin gir',
+                                  ),
+                                  onTap: () {
+                                    Navigator.pop(context);
+
+                                    _openPage(const AddProductPage());
+                                  },
+                                ),
+
+                                const Divider(),
+
+                                ListTile(
+                                  leading: const Icon(Icons.qr_code_scanner),
+                                  title: const Text('Barkod Tara'),
+                                  subtitle: const Text(
+                                    'Ürünün barkodunu kamerayla okut',
+                                  ),
+                                  onTap: () async {
+                                    Navigator.pop(sheetContext);
+
+                                    final barcode =
+                                        await Navigator.push<String>(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                const BarcodeScannerPage(),
+                                          ),
+                                        );
+
+                                    if (!mounted) return;
+
+                                    if (barcode != null) {
+                                      final response = await ApiService.instance
+                                          .get('/api/fridge/barcode/$barcode/');
+
+                                      if (!mounted) return;
+
+                                      if (response.statusCode == 200) {
+                                        final data = jsonDecode(
+                                          utf8.decode(response.bodyBytes),
+                                        );
+
+                                        final name =
+                                            data['name']?.toString() ?? '';
+                                        final brand =
+                                            data['brand']?.toString() ?? '';
+                                        final quantity =
+                                            data['quantity']?.toString() ?? '';
+
+                                        showDialog(
+                                          context: context,
+                                          builder: (dialogContext) {
+                                            return AlertDialog(
+                                              title: const Text('Ürün bulundu'),
+                                              content: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    name.isEmpty
+                                                        ? 'Ürün adı bulunamadı'
+                                                        : name,
+                                                    style: const TextStyle(
+                                                      fontSize: 18,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                  if (brand.isNotEmpty) ...[
+                                                    const SizedBox(height: 8),
+                                                    Text('Marka: $brand'),
+                                                  ],
+                                                  if (quantity.isNotEmpty) ...[
+                                                    const SizedBox(height: 8),
+                                                    Text('Paket: $quantity'),
+                                                  ],
+                                                  const SizedBox(height: 8),
+                                                  Text('Barkod: $barcode'),
+                                                ],
+                                              ),
+                                              actions: [
+                                                ElevatedButton(
+                                                  onPressed: () {
+                                                    Navigator.pop(
+                                                      dialogContext,
+                                                    );
+
+                                                    _openPage(
+                                                      AddProductPage(
+                                                        initialName: name,
+                                                      ),
+                                                    );
+                                                  },
+                                                  child: const Text(
+                                                    'Buzdolabına Ekle',
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        );
+                                      } else if (response.statusCode == 404) {
+                                        final manualContinue = await showDialog<bool>(
+                                          context: context,
+                                          builder: (dialogContext) {
+                                            return AlertDialog(
+                                              title: const Text(
+                                                'Ürün bulunamadı',
+                                              ),
+                                              content: Text(
+                                                'Bu barkod ürün veritabanında bulunamadı.\n\n'
+                                                'Barkod: $barcode\n\n'
+                                                'Ürün bilgilerini manuel girmek ister misin?',
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () {
+                                                    Navigator.pop(
+                                                      dialogContext,
+                                                      false,
+                                                    );
+                                                  },
+                                                  child: const Text('Vazgeç'),
+                                                ),
+                                                ElevatedButton(
+                                                  onPressed: () {
+                                                    Navigator.pop(
+                                                      dialogContext,
+                                                      true,
+                                                    );
+                                                  },
+                                                  child: const Text(
+                                                    'Manuel devam et',
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        );
+
+                                        if (!context.mounted) return;
+
+                                        if (manualContinue == true) {
+                                          await _openPage(
+                                            const AddProductPage(),
+                                          );
+                                        }
+                                      } else {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'Ürün sorgulanamadı: ${response.statusCode}',
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                                ),
+
+                                const Divider(),
+
+                                ListTile(
+                                  leading: const Icon(
+                                    Icons.receipt_long_outlined,
+                                  ),
+                                  title: const Text('Fiş Tara'),
+                                  subtitle: const Text(
+                                    'Market fişinden ürünleri otomatik çıkar',
+                                  ),
+                                  onTap: () {
+                                    Navigator.pop(context);
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Fiş tarama yakında eklenecek.',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
                   },
                 ),
                 _HomeCard(
@@ -211,7 +431,74 @@ class _HomePageState extends State<HomePage> {
                   title: 'Alışveriş Listesi',
                   subtitle: 'Eksikleri not al',
                   onTap: () {
-                    _openPage(ShoppingListPage(username: widget.username));
+                    showModalBottomSheet(
+                      context: context,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(24),
+                        ),
+                      ),
+                      builder: (context) {
+                        return SafeArea(
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Alışveriş listesi nasıl oluşturulsun?',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 20),
+
+                                ListTile(
+                                  leading: const Icon(Icons.edit_outlined),
+                                  title: const Text('Manuel Ekle'),
+                                  subtitle: const Text('Ürünleri kendin ekle'),
+                                  onTap: () {
+                                    Navigator.pop(context);
+
+                                    _openPage(
+                                      ShoppingListPage(
+                                        username: widget.username,
+                                      ),
+                                    );
+                                  },
+                                ),
+
+                                const Divider(),
+
+                                ListTile(
+                                  leading: const Icon(
+                                    Icons.document_scanner_outlined,
+                                  ),
+                                  title: const Text('Liste Tara'),
+                                  subtitle: const Text(
+                                    'Diyet veya alışveriş listesindeki ürünleri çıkar',
+                                  ),
+                                  onTap: () {
+                                    Navigator.pop(context);
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Liste tarama yakında eklenecek.',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
                   },
                 ),
                 _HomeCard(

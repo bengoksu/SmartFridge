@@ -3,7 +3,9 @@ import 'dart:convert';
 import '../services/api_service.dart';
 
 class AddProductPage extends StatefulWidget {
-  const AddProductPage({super.key});
+  final String? initialName;
+
+  const AddProductPage({super.key, this.initialName});
 
   @override
   State<AddProductPage> createState() => _AddProductPageState();
@@ -16,6 +18,14 @@ class _AddProductPageState extends State<AddProductPage> {
 
   DateTime? expiryDate;
   bool isSaving = false;
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.initialName != null) {
+      nameController.text = widget.initialName!;
+    }
+  }
 
   @override
   void dispose() {
