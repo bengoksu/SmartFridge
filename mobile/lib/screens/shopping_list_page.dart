@@ -132,10 +132,14 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
                     TextField(
                       controller: expiryController,
                       readOnly: true,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Son kullanma tarihi',
-                        hintText: 'Tarih seç',
-                        suffixIcon: Icon(Icons.calendar_month_outlined),
+                        hintText: 'İsteğe bağlı',
+                        suffixIcon: IconButton(
+                          tooltip: 'Tarihi kaldır',
+                          onPressed: expiryController.clear,
+                          icon: const Icon(Icons.close_rounded),
+                        ),
                       ),
                       onTap: () async {
                         final selectedDate = await showDatePicker(

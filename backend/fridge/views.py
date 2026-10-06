@@ -14,9 +14,71 @@ from rest_framework.views import APIView
 
 from .models import Product
 from .serializers import ProductSerializer
+import base64
+from io import BytesIO
+
+from django.conf import settings
+from django.db.models import F
+from openai import OpenAI
+from PIL import Image, UnidentifiedImageError
+from pydantic import BaseModel, Field, ValidationError
+from rest_framework.parsers import MultiPartParser, FormParser
 
 
 logger = logging.getLogger(__name__)
+
+MAX_RECEIPT_SIZE = 10 * 1024 * 1024
+RECEIPT_IMAGE_FORMATS = {
+    'JPEG': 'image/jpeg',
+    'PNG': 'image/png',
+    'WEBP': 'image/webp',
+}
+
+
+class ReceiptProduct(BaseModel):
+    name: str = Field(min_length=1)
+    quantity: int = Field(default=1, ge=1)
+    unit: str = Field(default='adet', min_length=1)
+
+
+class ReceiptAnalysis(BaseModel):
+    products: list[ReceiptProduct]
+
+
+class ReceiptImageError(ValueError):
+    pass
+
+
+def receipt_image_media_type(image_bytes):
+    try:
+        with Image.open(BytesIO(image_bytes)) as image:
+            image.verify()
+            image_format = image.format
+    except (UnidentifiedImageError, OSError, ValueError) as exc:
+        raise ReceiptImageError('Geçerli bir fiş görseli gönderilmedi.') from exc
+
+    media_type = RECEIPT_IMAGE_FORMATS.get(image_format)
+    if media_type is None:
+        raise ReceiptImageError(
+            'Yalnızca JPEG, PNG veya WEBP görseller destekleniyor.'
+        )
+    return media_type
+
+
+def parse_receipt_response(response):
+    if response.output_parsed is not None:
+        return response.output_parsed.model_dump()
+
+    raw_text = response.output_text.strip()
+    fenced_match = re.fullmatch(
+        r'```(?:json)?\s*(.*?)\s*```',
+        raw_text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if fenced_match:
+        raw_text = fenced_match.group(1).strip()
+
+    return ReceiptAnalysis.model_validate_json(raw_text).model_dump()
 
 
 QUANTITY_UNITS = {
@@ -78,11 +140,11 @@ class ProductListCreateView(generics.ListCreateAPIView):
         if household:
             return Product.objects.filter(
                 household=household
-            ).order_by('expiry_date')
+            ).order_by(F('expiry_date').asc(nulls_last=True), 'name')
 
         return Product.objects.filter(
             owner=self.request.user
-        ).order_by('expiry_date')
+        ).order_by(F('expiry_date').asc(nulls_last=True), 'name')
 
     def perform_create(self, serializer):
         household = self.request.user.households.first()
@@ -220,3 +282,119 @@ class BarcodeLookupView(APIView):
                 "image": product.get("image_front_url"),
             }
         )
+class ReceiptAnalyzeView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        receipt = request.FILES.get("receipt")
+
+        if not receipt:
+            return Response(
+                {"detail": "Fiş görseli gönderilmedi."},
+                status=400,
+            )
+
+        if receipt.size > MAX_RECEIPT_SIZE:
+            return Response(
+                {"detail": "Fiş görseli en fazla 10 MB olabilir."},
+                status=413,
+            )
+
+        try:
+            image_bytes = receipt.read()
+            content_type = receipt_image_media_type(image_bytes)
+            if not settings.OPENAI_API_KEY:
+                raise RuntimeError("OPENAI_API_KEY yapılandırılmamış.")
+
+            base64_image = base64.b64encode(image_bytes).decode("ascii")
+            client = OpenAI(api_key=settings.OPENAI_API_KEY)
+            response = client.responses.parse(
+                model="gpt-4o-mini",
+                text_format=ReceiptAnalysis,
+                input=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "input_text",
+                                "text": """
+Bu bir market fişi görselidir.
+
+Fişte satın alınan ürünleri tespit et.
+
+Sadece gerçek ürün satırlarını çıkar.
+Toplam, KDV, tarih, mağaza adı, ödeme tipi gibi bilgileri ürün olarak alma.
+
+Her ürün için:
+- name
+- quantity
+- unit
+
+alanlarını döndür.
+
+Fişte ürünün adedi, ağırlığı veya hacmi yazıyorsa bunu kullan.
+Product quantity alanı tam sayı olduğu için kilogramı grama, litreyi
+mililitreye çevir. Örneğin 0,750 KG için quantity=750 ve unit="g";
+1,5 LT için quantity=1500 ve unit="ml" döndür.
+Paket/adet sayısı biliniyorsa unit="adet" kullan.
+Miktar veya birim güvenilir şekilde belirlenemiyorsa quantity=1 ve
+unit="adet" kullan. Fiyatı hiçbir zaman miktar olarak alma.
+
+Sadece JSON döndür.
+
+Örnek:
+{
+  "products": [
+    {
+      "name": "Süt",
+      "quantity": 1000,
+      "unit": "ml"
+    },
+    {
+      "name": "Makarna",
+      "quantity": 2,
+      "unit": "adet"
+    }
+  ]
+}
+""",
+                            },
+                            {
+                                "type": "input_image",
+                                "image_url": (
+                                    f"data:{content_type};base64,"
+                                    f"{base64_image}"
+                                ),
+                            },
+                        ],
+                    }
+                ],
+            )
+
+            return Response(parse_receipt_response(response))
+
+        except ReceiptImageError as exc:
+            print(f"RECEIPT ANALYZE ERROR: {exc!r}", flush=True)
+            logger.exception("Receipt image validation failed")
+            return Response({"detail": str(exc)}, status=400)
+        except (json.JSONDecodeError, ValidationError) as exc:
+            print(f"RECEIPT ANALYZE ERROR: {exc!r}", flush=True)
+            logger.exception("Receipt response parsing failed")
+            return Response(
+                {
+                    "detail": "Fiş analiz servisinden geçersiz yanıt alındı.",
+                },
+                status=502,
+            )
+
+        except Exception as exc:
+            print(f"RECEIPT ANALYZE ERROR: {exc!r}", flush=True)
+            logger.exception("Receipt analysis failed")
+
+            return Response(
+                {
+                    "detail": "Fiş analiz edilirken hata oluştu.",
+                },
+                status=500,
+            )

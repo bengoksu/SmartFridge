@@ -11,6 +11,7 @@ import 'family_page.dart';
 import 'profile_page.dart';
 import 'recipe_result_page.dart';
 import 'barcode_scanner_page.dart';
+import 'receipt_scanner_page.dart';
 
 class HomePage extends StatefulWidget {
   final String username;
@@ -416,18 +417,12 @@ class _HomePageState extends State<HomePage> {
                                   ),
                                   title: const Text('Fiş Tara'),
                                   subtitle: const Text(
-                                    'Market fişinden ürünleri otomatik çıkar',
+                                    'Fiş fotoğrafından ürünleri algıla',
                                   ),
                                   onTap: () {
-                                    Navigator.pop(context);
+                                    Navigator.pop(sheetContext);
 
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Fiş tarama yakında eklenecek.',
-                                        ),
-                                      ),
-                                    );
+                                    _openPage(const ReceiptScannerPage());
                                   },
                                 ),
                               ],

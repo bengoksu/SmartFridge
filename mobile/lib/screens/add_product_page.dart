@@ -70,7 +70,7 @@ class _AddProductPageState extends State<AddProductPage> {
     final quantity = int.tryParse(quantityController.text.trim());
     final unit = unitController.text.trim();
 
-    if (name.isEmpty || quantity == null || expiryDate == null) {
+    if (name.isEmpty || quantity == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Lütfen gerekli alanları doldurun.')),
       );
@@ -91,10 +91,11 @@ class _AddProductPageState extends State<AddProductPage> {
             'name': name,
             'quantity': quantity,
             'unit': unit,
-            'expiry_date':
-                '${expiryDate!.year.toString().padLeft(4, '0')}-'
-                '${expiryDate!.month.toString().padLeft(2, '0')}-'
-                '${expiryDate!.day.toString().padLeft(2, '0')}',
+            'expiry_date': expiryDate == null
+                ? null
+                : '${expiryDate!.year.toString().padLeft(4, '0')}-'
+                      '${expiryDate!.month.toString().padLeft(2, '0')}-'
+                      '${expiryDate!.day.toString().padLeft(2, '0')}',
           }),
         ),
       );
@@ -235,7 +236,7 @@ class _AddProductPageState extends State<AddProductPage> {
                   const SizedBox(height: 22),
                   const _FieldTitle(
                     title: 'Son kullanma tarihi',
-                    subtitle: 'Sana zamanında hatırlatalım.',
+                    subtitle: 'İsteğe bağlı — girersen sana hatırlatalım.',
                   ),
                   const SizedBox(height: 14),
                   Material(
@@ -279,7 +280,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                 children: [
                                   Text(
                                     expiryDate == null
-                                        ? 'Tarih seç'
+                                        ? 'Belirtilmedi'
                                         : '${expiryDate!.day.toString().padLeft(2, '0')}.'
                                               '${expiryDate!.month.toString().padLeft(2, '0')}.'
                                               '${expiryDate!.year}',
@@ -291,7 +292,7 @@ class _AddProductPageState extends State<AddProductPage> {
                                   const SizedBox(height: 2),
                                   Text(
                                     expiryDate == null
-                                        ? 'Takvimden son günü belirle'
+                                        ? 'Eklemek için takvimden tarih seç'
                                         : 'Hatırlatıcı için hazır',
                                     style: const TextStyle(
                                       color: Color(0xFF78857D),
@@ -301,10 +302,19 @@ class _AddProductPageState extends State<AddProductPage> {
                                 ],
                               ),
                             ),
-                            const Icon(
-                              Icons.chevron_right_rounded,
-                              color: Color(0xFF91A097),
-                            ),
+                            if (expiryDate == null)
+                              const Icon(
+                                Icons.chevron_right_rounded,
+                                color: Color(0xFF91A097),
+                              )
+                            else
+                              IconButton(
+                                tooltip: 'Tarihi kaldır',
+                                onPressed: () =>
+                                    setState(() => expiryDate = null),
+                                icon: const Icon(Icons.close_rounded),
+                                color: const Color(0xFF78857D),
+                              ),
                           ],
                         ),
                       ),

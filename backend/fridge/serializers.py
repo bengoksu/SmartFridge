@@ -14,3 +14,9 @@ class ProductSerializer(serializers.ModelSerializer):
             'created_at',
         ]
         read_only_fields = ['id', 'created_at']
+        extra_kwargs = {
+            'expiry_date': {
+                'allow_null': True,
+                'required': False,
+            },
+        }

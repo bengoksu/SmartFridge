@@ -5,10 +5,28 @@ from rest_framework.test import APIRequestFactory, force_authenticate
 from unittest.mock import MagicMock, patch
 
 from .serializers import ProductSerializer
-from .views import BarcodeLookupView, normalize_product_quantity
+from .views import (
+    BarcodeLookupView,
+    normalize_product_quantity,
+    parse_receipt_response,
+)
 
 
 class ProductSerializerTests(SimpleTestCase):
+    def test_accepts_missing_or_null_expiry_date(self):
+        for expiry_value in ('missing', None):
+            data = {
+                'name': 'Süt',
+                'quantity': 1,
+                'unit': 'adet',
+            }
+            if expiry_value != 'missing':
+                data['expiry_date'] = expiry_value
+
+            serializer = ProductSerializer(data=data)
+
+            self.assertTrue(serializer.is_valid(), serializer.errors)
+
     def test_accepts_turkish_characters_in_name_and_unit(self):
         serializer = ProductSerializer(
             data={
@@ -130,4 +148,22 @@ class ProductQuantityNormalizationTests(SimpleTestCase):
         self.assertEqual(
             normalize_product_quantity({'quantity': '1 kg'}),
             (1000, 'g'),
+        )
+
+
+class ReceiptResponseParsingTests(SimpleTestCase):
+    def test_parses_json_code_fence_fallback(self):
+        response = MagicMock(
+            output_parsed=None,
+            output_text=(
+                '```json\n'
+                '{"products":[{"name":"Süt","quantity":1000,'
+                '"unit":"ml"}]}\n'
+                '```'
+            ),
+        )
+
+        self.assertEqual(
+            parse_receipt_response(response),
+            {'products': [{'name': 'Süt', 'quantity': 1000, 'unit': 'ml'}]},
         )

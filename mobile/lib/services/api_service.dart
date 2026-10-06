@@ -1,4 +1,5 @@
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 import 'auth_service.dart';
 
@@ -43,6 +44,40 @@ class ApiService {
         (requestHeaders) => http.delete(_uri(path), headers: requestHeaders),
         headers: headers,
       );
+  Future<http.Response> postMultipart(
+    String path, {
+    required Map<String, String> fields,
+    List<int>? fileBytes,
+    String? fileName,
+    String fileField = 'file',
+  }) => _send((requestHeaders) async {
+    final request = http.MultipartRequest('POST', _uri(path))
+      ..headers.addAll(requestHeaders)
+      ..fields.addAll(fields);
+
+    if (fileBytes != null && fileName != null) {
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          fileField,
+          fileBytes,
+          filename: fileName,
+          contentType: _imageMediaType(fileName),
+        ),
+      );
+    }
+
+    return http.Response.fromStream(await request.send());
+  });
+
+  MediaType? _imageMediaType(String fileName) {
+    final extension = fileName.toLowerCase().split('.').last;
+    return switch (extension) {
+      'jpg' || 'jpeg' => MediaType('image', 'jpeg'),
+      'png' => MediaType('image', 'png'),
+      'webp' => MediaType('image', 'webp'),
+      _ => null,
+    };
+  }
 
   Future<http.Response> patchMultipart(
     String path, {

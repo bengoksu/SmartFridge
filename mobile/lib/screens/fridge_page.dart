@@ -126,7 +126,7 @@ class _FridgePageState extends State<FridgePage>
                   controller: expiryController,
                   decoration: const InputDecoration(
                     labelText: 'Son kullanma tarihi',
-                    hintText: '2026-10-15',
+                    hintText: 'İsteğe bağlı (2026-10-15)',
                   ),
                 ),
               ],
@@ -828,7 +828,7 @@ class _Product {
   }
 
   static String _formatDate(String? value) {
-    if (value == null || value.isEmpty) return 'Tarih yok';
+    if (value == null || value.isEmpty) return 'Belirtilmedi';
     final parts = value.split('-');
     if (parts.length != 3) return value;
     return '${parts[2]}.${parts[1]}.${parts[0]}';

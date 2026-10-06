@@ -4,6 +4,7 @@ from .views import (
     BarcodeLookupView,
     ProductListCreateView,
     ProductDetailView,
+    ReceiptAnalyzeView,
 )
 
 urlpatterns = [
@@ -22,4 +23,9 @@ urlpatterns = [
         BarcodeLookupView.as_view(),
         name='barcode-lookup',
     ),
+    path(
+    'receipt/analyze/',
+    ReceiptAnalyzeView.as_view(),
+    name='receipt-analyze',
+),
 ]
