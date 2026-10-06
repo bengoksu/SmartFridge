@@ -1,19 +1,16 @@
-from rest_framework import generics
-from rest_framework.permissions import IsAuthenticated
-
-from .models import ShoppingItem
-from .serializers import ShoppingItemSerializer
 import base64
 import json
 import os
 
 from openai import OpenAI
-
-
-from rest_framework.permissions import IsAuthenticated
+from rest_framework import generics
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from .models import ShoppingItem
+from .serializers import ShoppingItemSerializer
 
 
 class ShoppingItemListCreateView(generics.ListCreateAPIView):
@@ -58,29 +55,80 @@ class ShoppingItemDetailView(generics.RetrieveUpdateDestroyAPIView):
             added_by=self.request.user,
             household__isnull=True
         )
+
+
 class AnalyzeShoppingListView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
+    max_file_size = 20 * 1024 * 1024
+    analysis_prompt = """
+Bu dosya bir alışveriş listesi, diyet listesi veya alınması gereken ürünleri
+içeren bir listedir.
+
+Dosyada satın alınması gereken gıda ve market ürünlerini tespit et.
+
+Kurallar:
+- Yemek isimlerini değil, satın alınacak ürünleri çıkar.
+- Gün, öğün, tarih, saat, kalori, porsiyon, açıklama ve başlıkları ürün olarak alma.
+- Aynı ürün birden fazla kez geçiyorsa yalnızca bir kez döndür.
+- Ürün isimlerini sade ve anlaşılır hale getir.
+- Sadece geçerli JSON döndür; Markdown kod bloğu kullanma.
+
+Format tam olarak şöyle olsun:
+{
+  "items": [
+    {"name": "Süt"},
+    {"name": "Yumurta"}
+  ]
+}
+"""
+
     def post(self, request):
         list_image = request.FILES.get("list_image")
+        list_pdf = request.FILES.get("list_pdf")
 
-        if not list_image:
+        if not list_image and not list_pdf:
             return Response(
-                {"detail": "Liste görseli gönderilmedi."},
+                {"detail": "Liste görseli veya PDF dosyası gönderilmedi."},
                 status=400,
             )
 
-        image_bytes = list_image.read()
-        base64_image = base64.b64encode(image_bytes).decode("utf-8")
+        # İki alan birden gönderilirse geriye dönük uyumluluk için görseli seç.
+        selected_file = list_image or list_pdf
+        is_pdf = list_image is None
 
-        content_type = list_image.content_type or "image/jpeg"
+        if selected_file.size > self.max_file_size:
+            return Response(
+                {"detail": "Liste dosyası en fazla 20 MB olabilir."},
+                status=413,
+            )
 
-        client = OpenAI(
-            api_key=os.getenv("OPENAI_API_KEY"),
-        )
+        file_bytes = selected_file.read()
+        if is_pdf and not file_bytes.startswith(b"%PDF-"):
+            return Response(
+                {"detail": "Seçilen dosya geçerli bir PDF değil."},
+                status=400,
+            )
+
+        encoded_file = base64.b64encode(file_bytes).decode("ascii")
+        if is_pdf:
+            file_content = {
+                "type": "input_file",
+                "filename": os.path.basename(selected_file.name) or "liste.pdf",
+                "file_data": f"data:application/pdf;base64,{encoded_file}",
+            }
+        else:
+            content_type = selected_file.content_type or "image/jpeg"
+            file_content = {
+                "type": "input_image",
+                "image_url": f"data:{content_type};base64,{encoded_file}",
+            }
 
         try:
+            client = OpenAI(
+                api_key=os.getenv("OPENAI_API_KEY"),
+            )
             response = client.responses.create(
                 model="gpt-4o-mini",
                 input=[
@@ -89,40 +137,9 @@ class AnalyzeShoppingListView(APIView):
                         "content": [
                             {
                                 "type": "input_text",
-                                "text": """
-Bu görsel bir alışveriş listesi, diyet listesi
-veya alınması gereken ürünleri içeren bir listedir.
-
-Görselde satın alınması gereken gıda ve market ürünlerini tespit et.
-
-Kurallar:
-- Yemek isimlerini değil, satın alınacak ürünleri çıkar.
-- Gün, öğün, kalori, saat, açıklama gibi bilgileri alma.
-- Aynı ürün birden fazla kez geçiyorsa tek ürün olarak döndür.
-- Ürün isimlerini sade ve anlaşılır hale getir.
-- Sadece JSON döndür.
-
-Format tam olarak şöyle olsun:
-
-{
-  "items": [
-    {
-      "name": "Süt"
-    },
-    {
-      "name": "Yumurta"
-    }
-  ]
-}
-""",
+                                "text": self.analysis_prompt,
                             },
-                            {
-                                "type": "input_image",
-                                "image_url": (
-                                    f"data:{content_type};base64,"
-                                    f"{base64_image}"
-                                ),
-                            },
+                            file_content,
                         ],
                     }
                 ],
@@ -137,7 +154,7 @@ Format tam olarak şöyle olsun:
                 raw_text = raw_text.removeprefix("```")
                 raw_text = raw_text.removesuffix("```").strip()
 
-            result = json.loads(raw_text)
+            result = self._normalize_result(json.loads(raw_text))
 
             return Response(result)
 
@@ -158,3 +175,22 @@ Format tam olarak şöyle olsun:
                 },
                 status=500,
             )
+
+    @staticmethod
+    def _normalize_result(result):
+        if not isinstance(result, dict) or not isinstance(result.get("items"), list):
+            raise ValueError("Model yanıtında items listesi bulunamadı.")
+
+        items = []
+        seen_names = set()
+        for item in result["items"]:
+            if not isinstance(item, dict):
+                continue
+            name = " ".join(str(item.get("name", "")).split())
+            normalized_name = name.casefold()
+            if not name or normalized_name in seen_names:
+                continue
+            seen_names.add(normalized_name)
+            items.append({"name": name})
+
+        return {"items": items}

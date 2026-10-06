@@ -1,7 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+
 import '../services/api_service.dart';
+import 'list_scanner_page.dart';
 
 class ShoppingListPage extends StatefulWidget {
   final String username;
@@ -77,6 +79,23 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
         SnackBar(content: Text('Ürün eklenemedi: ${response.statusCode}')),
       );
     }
+  }
+
+  Future<void> _openListScanner() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const ListScannerPage()));
+    if (mounted) await _loadItems();
+  }
+
+  Future<void> _clearCompletedItems() async {
+    final completedItems = _items.where((item) => item.isCompleted).toList();
+
+    for (final item in completedItems) {
+      await ApiService.instance.delete('/api/shopping/items/${item.id}/');
+    }
+
+    await _loadItems();
   }
 
   Future<void> _handleItemToggle(_ShoppingItem item, bool newValue) async {
@@ -225,6 +244,7 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
   @override
   Widget build(BuildContext context) {
     final remaining = _items.where((item) => !item.isCompleted).length;
+    final hasCompleted = _items.any((item) => item.isCompleted);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -236,25 +256,6 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
           'Alışveriş Listesi',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
-        actions: [
-          IconButton(
-            tooltip: 'Tamamlananları temizle',
-            onPressed: () async {
-              final completedItems = _items
-                  .where((item) => item.isCompleted)
-                  .toList();
-
-              for (final item in completedItems) {
-                await ApiService.instance.delete(
-                  '/api/shopping/items/${item.id}/',
-                );
-              }
-
-              await _loadItems();
-            },
-            icon: const Icon(Icons.cleaning_services_outlined),
-          ),
-        ],
       ),
 
       body: SafeArea(
@@ -263,17 +264,54 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                remaining == 0
-                    ? 'Liste hazır'
-                    : '$remaining ürün alınmayı bekliyor',
-                style: const TextStyle(
-                  color: Color(0xFF526158),
-                  fontWeight: FontWeight.w600,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    remaining == 0
+                        ? 'Liste hazır'
+                        : '$remaining ürün alınmayı bekliyor',
+                    style: const TextStyle(
+                      color: Color(0xFF526158),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (hasCompleted)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: _clearCompletedItems,
+                        icon: const Icon(Icons.cleaning_services_outlined),
+                        label: const Text('Tamamlananları Temizle'),
+                      ),
+                    ),
+                ],
               ),
 
               const SizedBox(height: 16),
+
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: OutlinedButton.icon(
+                  onPressed: _openListScanner,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF7C3AED),
+                    side: const BorderSide(color: Color(0xFFC4B5FD)),
+                    backgroundColor: const Color(0xFFF5F3FF),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  icon: const Icon(Icons.document_scanner_outlined),
+                  label: const Text(
+                    'Fotoğraf veya PDF’den Liste Tara',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 14),
 
               Row(
                 children: [

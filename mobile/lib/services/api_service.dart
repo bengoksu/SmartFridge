@@ -61,7 +61,7 @@ class ApiService {
           fileField,
           fileBytes,
           filename: fileName,
-          contentType: _imageMediaType(fileName),
+          contentType: _mediaType(fileName),
         ),
       );
     }
@@ -69,12 +69,13 @@ class ApiService {
     return http.Response.fromStream(await request.send());
   });
 
-  MediaType? _imageMediaType(String fileName) {
+  MediaType? _mediaType(String fileName) {
     final extension = fileName.toLowerCase().split('.').last;
     return switch (extension) {
       'jpg' || 'jpeg' => MediaType('image', 'jpeg'),
       'png' => MediaType('image', 'png'),
       'webp' => MediaType('image', 'webp'),
+      'pdf' => MediaType('application', 'pdf'),
       _ => null,
     };
   }

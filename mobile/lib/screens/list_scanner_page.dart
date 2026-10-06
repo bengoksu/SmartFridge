@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -18,6 +19,7 @@ class _ListScannerPageState extends State<ListScannerPage> {
   final ImagePicker _picker = ImagePicker();
 
   XFile? _selectedImage;
+  PlatformFile? _selectedPdf;
   bool _isAnalyzing = false;
 
   List<Map<String, dynamic>> _detectedItems = [];
@@ -32,6 +34,7 @@ class _ListScannerPageState extends State<ListScannerPage> {
 
     setState(() {
       _selectedImage = image;
+      _selectedPdf = null;
       _detectedItems = [];
     });
   }
@@ -52,8 +55,32 @@ class _ListScannerPageState extends State<ListScannerPage> {
 
     setState(() {
       _selectedImage = image;
+      _selectedPdf = null;
       _detectedItems = [];
     });
+  }
+
+  Future<void> _pickPdf() async {
+    try {
+      final file = await FilePicker.pickFile(
+        type: FileType.custom,
+        allowedExtensions: const ['pdf'],
+      );
+
+      if (file == null || !mounted) return;
+
+      setState(() {
+        _selectedPdf = file;
+        _selectedImage = null;
+        _detectedItems = [];
+      });
+    } catch (error) {
+      debugPrint('PDF SEÇİM HATASI: $error');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('PDF seçilirken bir hata oluştu.')),
+      );
+    }
   }
 
   void _clearImage() {
@@ -63,23 +90,45 @@ class _ListScannerPageState extends State<ListScannerPage> {
     });
   }
 
+  void _clearPdf() {
+    setState(() {
+      _selectedPdf = null;
+      _detectedItems = [];
+    });
+  }
+
   Future<void> _analyzeList() async {
-    if (_selectedImage == null) return;
+    if (_selectedImage == null && _selectedPdf == null) return;
 
     setState(() {
       _isAnalyzing = true;
     });
 
     try {
-      final file = File(_selectedImage!.path);
-      final bytes = await file.readAsBytes();
+      final selectedImage = _selectedImage;
+      final selectedPdf = _selectedPdf;
+      final List<int> bytes;
+      final String fileName;
+      final String fileField;
+
+      if (selectedImage != null) {
+        bytes = await File(selectedImage.path).readAsBytes();
+        fileName = selectedImage.name;
+        fileField = 'list_image';
+      } else if (selectedPdf != null) {
+        bytes = await selectedPdf.readAsBytes();
+        fileName = selectedPdf.name;
+        fileField = 'list_pdf';
+      } else {
+        return;
+      }
 
       final response = await ApiService.instance.postMultipart(
         '/api/shopping/analyze-list/',
         fields: {},
         fileBytes: bytes,
-        fileName: _selectedImage!.name,
-        fileField: 'list_image',
+        fileName: fileName,
+        fileField: fileField,
       );
 
       if (!mounted) return;
@@ -104,11 +153,18 @@ class _ListScannerPageState extends State<ListScannerPage> {
           });
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Liste analiz edilemedi: ${response.statusCode}'),
-          ),
-        );
+        var message = 'Liste analiz edilemedi: ${response.statusCode}';
+        try {
+          final errorData = jsonDecode(utf8.decode(response.bodyBytes));
+          if (errorData is Map && errorData['detail'] is String) {
+            message = errorData['detail'] as String;
+          }
+        } catch (_) {
+          // Sunucu JSON dışında bir hata döndürürse durum kodunu göster.
+        }
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     } catch (e) {
       debugPrint('LİSTE ANALİZ HATASI: $e');
@@ -237,7 +293,7 @@ class _ListScannerPageState extends State<ListScannerPage> {
 
             const SizedBox(height: 24),
 
-            if (_selectedImage == null)
+            if (_selectedImage == null && _selectedPdf == null)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(
@@ -266,14 +322,14 @@ class _ListScannerPageState extends State<ListScannerPage> {
                     ),
                     SizedBox(height: 6),
                     Text(
-                      'Fotoğraf çekebilir veya galeriden bir liste seçebilirsin.',
+                      'Fotoğraf çekebilir, galeriden görsel veya PDF seçebilirsin.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Color(0xFF78857D), fontSize: 12),
                     ),
                   ],
                 ),
               )
-            else
+            else if (_selectedImage != null)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
@@ -303,6 +359,60 @@ class _ListScannerPageState extends State<ListScannerPage> {
                     ),
                   ],
                 ),
+              )
+            else
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: const Color(0xFFE4EBE7)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 54,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3E8FF),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(
+                        Icons.picture_as_pdf_rounded,
+                        color: Color(0xFF7C3AED),
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Seçilen PDF',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF78857D),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _selectedPdf?.name ?? '',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _clearPdf,
+                      tooltip: 'PDF’yi kaldır',
+                      icon: const Icon(Icons.delete_outline),
+                    ),
+                  ],
+                ),
               ),
 
             const SizedBox(height: 18),
@@ -327,12 +437,25 @@ class _ListScannerPageState extends State<ListScannerPage> {
               ],
             ),
 
+            const SizedBox(height: 12),
+
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _pickPdf,
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                label: const Text('PDF Seç'),
+              ),
+            ),
+
             const SizedBox(height: 18),
 
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: _selectedImage == null || _isAnalyzing
+                onPressed:
+                    (_selectedImage == null && _selectedPdf == null) ||
+                        _isAnalyzing
                     ? null
                     : _analyzeList,
                 icon: _isAnalyzing

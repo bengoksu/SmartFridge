@@ -12,7 +12,6 @@ import 'profile_page.dart';
 import 'recipe_result_page.dart';
 import 'barcode_scanner_page.dart';
 import 'receipt_scanner_page.dart';
-import 'list_scanner_page.dart';
 
 class HomePage extends StatefulWidget {
   final String username;
@@ -428,61 +427,7 @@ class _HomePageState extends State<HomePage> {
                   title: 'Alışveriş Listesi',
                   subtitle: 'Eksikleri not al',
                   onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      backgroundColor: Colors.transparent,
-                      isScrollControlled: true,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(24),
-                        ),
-                      ),
-                      builder: (sheetContext) {
-                        return _AddOptionsSheet(
-                          eyebrow: 'ALIŞVERİŞ LİSTESİ',
-                          title: 'Listen nasıl oluşturulsun?',
-                          subtitle: 'Ürünleri tek tek ekle veya listeni tara.',
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _AddMethodTile(
-                                  icon: Icons.playlist_add_rounded,
-                                  color: const Color(0xFF2563EB),
-                                  title: 'Manuel Ekle',
-                                  subtitle: 'Ürünleri kendin ekle',
-                                  onTap: () {
-                                    Navigator.pop(sheetContext);
-
-                                    _openPage(
-                                      ShoppingListPage(
-                                        username: widget.username,
-                                      ),
-                                    );
-                                  },
-                                ),
-
-                                const SizedBox(height: 12),
-
-                                _AddMethodTile(
-                                  icon: Icons.document_scanner_rounded,
-                                  color: const Color(0xFF7C3AED),
-                                  title: 'Liste Tara',
-                                  subtitle:
-                                      'Liste fotoğrafından ürünleri algıla',
-                                  onTap: () {
-                                    Navigator.pop(sheetContext);
-
-                                    _openPage(const ListScannerPage());
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    );
+                    _openPage(ShoppingListPage(username: widget.username));
                   },
                 ),
                 _HomeCard(
