@@ -281,8 +281,8 @@ class _FridgePageState extends State<FridgePage>
     }
 
     // Ürünü buzdolabından kaldır.
-    final deleteResponse = await ApiService.instance.delete(
-      '/api/fridge/products/${product.id}/',
+    final deleteResponse = await ApiService.instance.post(
+      '/api/fridge/products/${product.id}/consume/',
     );
 
     if (!mounted) return;

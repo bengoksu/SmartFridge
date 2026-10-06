@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Household
+from .models import FamilyActivity, Household
 
 
 class HouseholdSerializer(serializers.ModelSerializer):
@@ -38,3 +38,17 @@ class HouseholdSerializer(serializers.ModelSerializer):
 
 class JoinHouseholdSerializer(serializers.Serializer):
     invite_code = serializers.UUIDField()
+
+
+class FamilyActivitySerializer(serializers.ModelSerializer):
+    user = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FamilyActivity
+        fields = ['id', 'action_type', 'message', 'created_at', 'user']
+        read_only_fields = fields
+
+    def get_user(self, obj):
+        if obj.user is None:
+            return None
+        return {'username': obj.user.get_username()}

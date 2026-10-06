@@ -1,4 +1,6 @@
 import json
+from types import SimpleNamespace
+
 from django.test import SimpleTestCase
 from django.urls import resolve, reverse
 from rest_framework.test import APIRequestFactory, force_authenticate
@@ -7,9 +9,224 @@ from unittest.mock import MagicMock, patch
 from .serializers import ProductSerializer
 from .views import (
     BarcodeLookupView,
+    ProductDetailView,
+    ProductConsumeView,
+    ProductListCreateView,
     normalize_product_quantity,
     parse_receipt_response,
 )
+
+
+class ProductActivityTests(SimpleTestCase):
+    @patch('fridge.views.FamilyActivity.objects.create')
+    def test_creates_family_activity_when_product_is_added(self, create_activity):
+        household = MagicMock()
+        user = MagicMock()
+        user.households.first.return_value = household
+        user.get_username.return_value = 'ayse'
+        serializer = MagicMock()
+        serializer.save.return_value = SimpleNamespace(name='Süt')
+        view = ProductListCreateView()
+        view.request = MagicMock(user=user)
+
+        view.perform_create(serializer)
+
+        serializer.save.assert_called_once_with(owner=user, household=household)
+        create_activity.assert_called_once_with(
+            household=household,
+            user=user,
+            action_type='product_added',
+            message='ayse buzdolabına Süt ekledi.',
+        )
+
+    @patch('fridge.views.FamilyActivity.objects.create')
+    def test_product_without_household_does_not_create_activity(
+        self,
+        create_activity,
+    ):
+        user = MagicMock()
+        user.households.first.return_value = None
+        serializer = MagicMock()
+        serializer.save.return_value = SimpleNamespace(name='Yumurta')
+        view = ProductListCreateView()
+        view.request = MagicMock(user=user)
+
+        view.perform_create(serializer)
+
+        serializer.save.assert_called_once_with(owner=user, household=None)
+        create_activity.assert_not_called()
+
+    @patch('fridge.views.logger.exception')
+    @patch('fridge.views.FamilyActivity.objects.create')
+    def test_activity_error_does_not_break_product_creation(
+        self,
+        create_activity,
+        log_exception,
+    ):
+        create_activity.side_effect = RuntimeError('activity unavailable')
+        user = MagicMock()
+        user.households.first.return_value = MagicMock()
+        user.get_username.return_value = 'ayse'
+        serializer = MagicMock()
+        serializer.save.return_value = SimpleNamespace(pk=42, name='Süt')
+        view = ProductListCreateView()
+        view.request = MagicMock(user=user)
+
+        view.perform_create(serializer)
+
+        serializer.save.assert_called_once()
+        log_exception.assert_called_once()
+
+    @patch('fridge.views.FamilyActivity.objects.create')
+    def test_creates_family_activity_when_product_is_deleted(self, create_activity):
+        household = MagicMock()
+        product = MagicMock(household=household)
+        product.name = 'Süt'
+        user = MagicMock()
+        user.get_username.return_value = 'ayse'
+        view = ProductDetailView()
+        view.request = MagicMock(user=user)
+
+        view.perform_destroy(product)
+
+        product.delete.assert_called_once_with()
+        create_activity.assert_called_once_with(
+            household=household,
+            user=user,
+            action_type='product_deleted',
+            message='ayse buzdolabından Süt sildi.',
+        )
+
+    @patch('fridge.views.FamilyActivity.objects.create')
+    def test_product_delete_without_household_does_not_create_activity(
+        self,
+        create_activity,
+    ):
+        product = MagicMock(household=None)
+        product.name = 'Yumurta'
+        view = ProductDetailView()
+        view.request = MagicMock(user=MagicMock())
+
+        view.perform_destroy(product)
+
+        product.delete.assert_called_once_with()
+        create_activity.assert_not_called()
+
+    @patch('fridge.views.FamilyActivity.objects.create')
+    def test_creates_family_activity_when_product_is_updated(self, create_activity):
+        household = MagicMock()
+        product = SimpleNamespace(pk=42, name='Süt', household=household)
+        serializer = MagicMock()
+        serializer.save.return_value = product
+        user = MagicMock()
+        user.get_username.return_value = 'ayse'
+        view = ProductDetailView()
+        view.request = MagicMock(user=user)
+
+        view.perform_update(serializer)
+
+        serializer.save.assert_called_once_with()
+        create_activity.assert_called_once_with(
+            household=household,
+            user=user,
+            action_type='product_updated',
+            message='ayse Süt ürününü güncelledi.',
+        )
+
+    @patch('fridge.views.FamilyActivity.objects.create')
+    def test_product_update_without_household_does_not_create_activity(
+        self,
+        create_activity,
+    ):
+        serializer = MagicMock()
+        serializer.save.return_value = SimpleNamespace(
+            pk=42,
+            name='Yumurta',
+            household=None,
+        )
+        view = ProductDetailView()
+        view.request = MagicMock(user=MagicMock())
+
+        view.perform_update(serializer)
+
+        serializer.save.assert_called_once_with()
+        create_activity.assert_not_called()
+
+    @patch('fridge.views.logger.exception')
+    @patch('fridge.views.FamilyActivity.objects.create')
+    def test_activity_error_does_not_break_product_update(
+        self,
+        create_activity,
+        log_exception,
+    ):
+        create_activity.side_effect = RuntimeError('activity unavailable')
+        serializer = MagicMock()
+        serializer.save.return_value = SimpleNamespace(
+            pk=42,
+            name='Süt',
+            household=MagicMock(),
+        )
+        view = ProductDetailView()
+        view.request = MagicMock(user=MagicMock())
+
+        view.perform_update(serializer)
+
+        serializer.save.assert_called_once_with()
+        log_exception.assert_called_once()
+
+    @patch('fridge.views.FamilyActivity.objects.create')
+    def test_consumed_product_creates_only_consumed_activity(self, create_activity):
+        household = MagicMock()
+        product = MagicMock(household=household, pk=42)
+        product.name = 'Süt'
+        user = MagicMock()
+        user.get_username.return_value = 'ayse'
+        view = ProductConsumeView()
+        view.get_object = MagicMock(return_value=product)
+        request = MagicMock(user=user)
+
+        response = view.post(request, pk=42)
+
+        self.assertEqual(response.status_code, 204)
+        product.delete.assert_called_once_with()
+        create_activity.assert_called_once_with(
+            household=household,
+            user=user,
+            action_type='product_consumed',
+            message='ayse Süt ürününü tükendi olarak işaretledi.',
+        )
+
+    @patch('fridge.views.FamilyActivity.objects.create')
+    def test_consumed_product_without_household_skips_activity(self, create_activity):
+        product = MagicMock(household=None, pk=42)
+        product.name = 'Yumurta'
+        view = ProductConsumeView()
+        view.get_object = MagicMock(return_value=product)
+
+        response = view.post(MagicMock(), pk=42)
+
+        self.assertEqual(response.status_code, 204)
+        product.delete.assert_called_once_with()
+        create_activity.assert_not_called()
+
+    @patch('fridge.views.logger.exception')
+    @patch('fridge.views.FamilyActivity.objects.create')
+    def test_activity_error_does_not_break_consumed_flow(
+        self,
+        create_activity,
+        log_exception,
+    ):
+        create_activity.side_effect = RuntimeError('activity unavailable')
+        product = MagicMock(household=MagicMock(), pk=42)
+        product.name = 'Süt'
+        view = ProductConsumeView()
+        view.get_object = MagicMock(return_value=product)
+
+        response = view.post(MagicMock(), pk=42)
+
+        self.assertEqual(response.status_code, 204)
+        product.delete.assert_called_once_with()
+        log_exception.assert_called_once()
 
 
 class ProductSerializerTests(SimpleTestCase):

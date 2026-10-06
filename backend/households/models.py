@@ -25,4 +25,22 @@ class Household(models.Model):
     def __str__(self):
         return self.name
 
-    
+
+class FamilyActivity(models.Model):
+    household = models.ForeignKey(
+        Household,
+        on_delete=models.CASCADE,
+        related_name='activities',
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name='family_activities',
+        null=True,
+    )
+    action_type = models.CharField(max_length=100)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.message

@@ -4,8 +4,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Household
-from .serializers import HouseholdSerializer, JoinHouseholdSerializer
+from .models import FamilyActivity, Household
+from .serializers import (
+    FamilyActivitySerializer,
+    HouseholdSerializer,
+    JoinHouseholdSerializer,
+)
 
 
 class HouseholdCreateView(generics.CreateAPIView):
@@ -90,3 +94,17 @@ class MyHouseholdView(generics.ListAPIView):
         return Household.objects.filter(
             members=self.request.user
         ).distinct()
+
+
+class FamilyActivityListView(generics.ListAPIView):
+    serializer_class = FamilyActivitySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        household = self.request.user.households.first()
+        if household is None:
+            return FamilyActivity.objects.none()
+
+        return FamilyActivity.objects.filter(
+            household=household,
+        ).select_related('user').order_by('-created_at')

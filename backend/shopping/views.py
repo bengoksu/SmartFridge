@@ -1,5 +1,6 @@
 import base64
 import json
+import logging
 import os
 
 from openai import OpenAI
@@ -9,8 +10,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from households.models import FamilyActivity
+
 from .models import ShoppingItem
 from .serializers import ShoppingItemSerializer
+
+
+logger = logging.getLogger(__name__)
 
 
 class ShoppingItemListCreateView(generics.ListCreateAPIView):
@@ -33,10 +39,27 @@ class ShoppingItemListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         household = self.request.user.households.first()
 
-        serializer.save(
+        shopping_item = serializer.save(
             added_by=self.request.user,
             household=household
         )
+
+        if household:
+            try:
+                FamilyActivity.objects.create(
+                    household=household,
+                    user=self.request.user,
+                    action_type='shopping_item_added',
+                    message=(
+                        f'{self.request.user.get_username()} '
+                        f'alışveriş listesine {shopping_item.name} ekledi.'
+                    ),
+                )
+            except Exception:
+                logger.exception(
+                    'Shopping item %s was created, but its family activity could not be saved.',
+                    shopping_item.pk,
+                )
 
 
 class ShoppingItemDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -55,6 +78,55 @@ class ShoppingItemDetailView(generics.RetrieveUpdateDestroyAPIView):
             added_by=self.request.user,
             household__isnull=True
         )
+
+    def perform_update(self, serializer):
+        was_completed = serializer.instance.is_completed
+        shopping_item = serializer.save()
+
+        if (
+            not was_completed
+            and shopping_item.is_completed
+            and shopping_item.household
+        ):
+            try:
+                FamilyActivity.objects.create(
+                    household=shopping_item.household,
+                    user=self.request.user,
+                    action_type='shopping_item_completed',
+                    message=(
+                        f'{self.request.user.get_username()} '
+                        f'{shopping_item.name} ürününü aldı.'
+                    ),
+                )
+            except Exception:
+                logger.exception(
+                    'Shopping item %s was completed, but its family activity could not be saved.',
+                    shopping_item.pk,
+                )
+
+    def perform_destroy(self, instance):
+        item_id = instance.pk
+        item_name = instance.name
+        household = instance.household
+
+        instance.delete()
+
+        if household:
+            try:
+                FamilyActivity.objects.create(
+                    household=household,
+                    user=self.request.user,
+                    action_type='shopping_item_deleted',
+                    message=(
+                        f'{self.request.user.get_username()} '
+                        f'alışveriş listesinden {item_name} sildi.'
+                    ),
+                )
+            except Exception:
+                logger.exception(
+                    'Shopping item %s was deleted, but its family activity could not be saved.',
+                    item_id,
+                )
 
 
 class AnalyzeShoppingListView(APIView):

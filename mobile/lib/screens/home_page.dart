@@ -8,6 +8,7 @@ import 'add_product_page.dart';
 import 'fridge_page.dart';
 import 'shopping_list_page.dart';
 import 'family_page.dart';
+import 'family_activity_page.dart';
 import 'profile_page.dart';
 import 'recipe_result_page.dart';
 import 'barcode_scanner_page.dart';
@@ -134,6 +135,12 @@ class _HomePageState extends State<HomePage> {
               isLabelVisible: _unreadProducts.isNotEmpty,
               child: const Icon(Icons.notifications_none),
             ),
+          ),
+
+          IconButton(
+            tooltip: 'Aile Hareketleri',
+            onPressed: () => _openPage(const FamilyActivityPage()),
+            icon: const Icon(Icons.groups_2_outlined),
           ),
 
           IconButton(

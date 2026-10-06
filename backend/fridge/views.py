@@ -7,7 +7,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
-from rest_framework import generics
+from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -23,6 +23,8 @@ from openai import OpenAI
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field, ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser
+
+from households.models import FamilyActivity
 
 
 logger = logging.getLogger(__name__)
@@ -149,10 +151,27 @@ class ProductListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         household = self.request.user.households.first()
 
-        serializer.save(
+        product = serializer.save(
             owner=self.request.user,
             household=household
         )
+
+        if household:
+            try:
+                FamilyActivity.objects.create(
+                    household=household,
+                    user=self.request.user,
+                    action_type='product_added',
+                    message=(
+                        f'{self.request.user.get_username()} '
+                        f'buzdolabına {product.name} ekledi.'
+                    ),
+                )
+            except Exception:
+                logger.exception(
+                    'Product %s was created, but its family activity could not be saved.',
+                    product.pk,
+                )
 
 
 class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -170,6 +189,73 @@ class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
         return Product.objects.filter(
             owner=self.request.user
         )
+
+    def perform_update(self, serializer):
+        product = serializer.save()
+        household = product.household
+
+        if household:
+            try:
+                FamilyActivity.objects.create(
+                    household=household,
+                    user=self.request.user,
+                    action_type='product_updated',
+                    message=(
+                        f'{self.request.user.get_username()} '
+                        f'{product.name} ürününü güncelledi.'
+                    ),
+                )
+            except Exception:
+                logger.exception(
+                    'Product %s was updated, but its family activity could not be saved.',
+                    product.pk,
+                )
+
+    def perform_destroy(self, instance):
+        product_name = instance.name
+        household = instance.household
+
+        instance.delete()
+
+        if household:
+            FamilyActivity.objects.create(
+                household=household,
+                user=self.request.user,
+                action_type='product_deleted',
+                message=(
+                    f'{self.request.user.get_username()} '
+                    f'buzdolabından {product_name} sildi.'
+                ),
+            )
+
+
+class ProductConsumeView(ProductDetailView):
+    def post(self, request, *args, **kwargs):
+        product = self.get_object()
+        product_id = product.pk
+        product_name = product.name
+        household = product.household
+
+        product.delete()
+
+        if household:
+            try:
+                FamilyActivity.objects.create(
+                    household=household,
+                    user=request.user,
+                    action_type='product_consumed',
+                    message=(
+                        f'{request.user.get_username()} '
+                        f'{product_name} ürününü tükendi olarak işaretledi.'
+                    ),
+                )
+            except Exception:
+                logger.exception(
+                    'Product %s was consumed, but its family activity could not be saved.',
+                    product_id,
+                )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class BarcodeLookupView(APIView):
