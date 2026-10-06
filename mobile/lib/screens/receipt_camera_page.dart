@@ -2,7 +2,17 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
 class ReceiptCameraPage extends StatefulWidget {
-  const ReceiptCameraPage({super.key});
+  const ReceiptCameraPage({
+    super.key,
+    this.title = 'Fiş Fotoğrafı Çek',
+    this.instructions = 'Fişin tamamını kadraja alın ve sabit tutun.',
+    this.permissionMessage =
+        'Fiş fotoğrafı çekmek için kamera izni vermelisiniz.',
+  });
+
+  final String title;
+  final String instructions;
+  final String permissionMessage;
 
   @override
   State<ReceiptCameraPage> createState() => _ReceiptCameraPageState();
@@ -119,7 +129,7 @@ class _ReceiptCameraPageState extends State<ReceiptCameraPage>
       case 'CameraAccessDenied':
       case 'CameraAccessDeniedWithoutPrompt':
       case 'CameraAccessRestricted':
-        return 'Fiş fotoğrafı çekmek için kamera izni vermelisiniz.';
+        return widget.permissionMessage;
       default:
         return error.description ??
             'Kamera başlatılamadı. Lütfen tekrar deneyin.';
@@ -176,7 +186,7 @@ class _ReceiptCameraPageState extends State<ReceiptCameraPage>
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        title: const Text('Fiş Fotoğrafı Çek'),
+        title: Text(widget.title),
       ),
       body: SafeArea(child: _buildBody()),
     );
@@ -234,8 +244,8 @@ class _ReceiptCameraPageState extends State<ReceiptCameraPage>
           padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
           child: Column(
             children: [
-              const Text(
-                'Fişin tamamını kadraja alın ve sabit tutun.',
+              Text(
+                widget.instructions,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.white70),
               ),

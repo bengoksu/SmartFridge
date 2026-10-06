@@ -12,6 +12,7 @@ import 'profile_page.dart';
 import 'recipe_result_page.dart';
 import 'barcode_scanner_page.dart';
 import 'receipt_scanner_page.dart';
+import 'list_scanner_page.dart';
 
 class HomePage extends StatefulWidget {
   final String username;
@@ -207,50 +208,42 @@ class _HomePageState extends State<HomePage> {
                   onTap: () {
                     showModalBottomSheet(
                       context: context,
+                      backgroundColor: Colors.transparent,
+                      isScrollControlled: true,
                       shape: const RoundedRectangleBorder(
                         borderRadius: BorderRadius.vertical(
                           top: Radius.circular(24),
                         ),
                       ),
                       builder: (sheetContext) {
-                        return SafeArea(
+                        return _AddOptionsSheet(
+                          eyebrow: 'BUZDOLABINA EKLE',
+                          title: 'Ürün nasıl eklensin?',
+                          subtitle: 'Sana en uygun ekleme yöntemini seç.',
                           child: Padding(
-                            padding: const EdgeInsets.all(20),
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Ürün nasıl eklensin?',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-
-                                const SizedBox(height: 20),
-
-                                ListTile(
-                                  leading: const Icon(Icons.edit_outlined),
-                                  title: const Text('Manuel Ekle'),
-                                  subtitle: const Text(
-                                    'Ürün bilgilerini kendin gir',
-                                  ),
+                                _AddMethodTile(
+                                  icon: Icons.edit_note_rounded,
+                                  color: const Color(0xFF2563EB),
+                                  title: 'Manuel Ekle',
+                                  subtitle: 'Ürün bilgilerini kendin gir',
                                   onTap: () {
-                                    Navigator.pop(context);
+                                    Navigator.pop(sheetContext);
 
                                     _openPage(const AddProductPage());
                                   },
                                 ),
 
-                                const Divider(),
+                                const SizedBox(height: 12),
 
-                                ListTile(
-                                  leading: const Icon(Icons.qr_code_scanner),
-                                  title: const Text('Barkod Tara'),
-                                  subtitle: const Text(
-                                    'Ürünün barkodunu kamerayla okut',
-                                  ),
+                                _AddMethodTile(
+                                  icon: Icons.qr_code_scanner_rounded,
+                                  color: const Color(0xFF7C3AED),
+                                  title: 'Barkod Tara',
+                                  subtitle: 'Ürünün barkodunu kamerayla okut',
                                   onTap: () async {
                                     Navigator.pop(sheetContext);
 
@@ -409,16 +402,13 @@ class _HomePageState extends State<HomePage> {
                                   },
                                 ),
 
-                                const Divider(),
+                                const SizedBox(height: 12),
 
-                                ListTile(
-                                  leading: const Icon(
-                                    Icons.receipt_long_outlined,
-                                  ),
-                                  title: const Text('Fiş Tara'),
-                                  subtitle: const Text(
-                                    'Fiş fotoğrafından ürünleri algıla',
-                                  ),
+                                _AddMethodTile(
+                                  icon: Icons.receipt_long_rounded,
+                                  color: const Color(0xFF059669),
+                                  title: 'Fiş Tara',
+                                  subtitle: 'Fiş fotoğrafından ürünleri algıla',
                                   onTap: () {
                                     Navigator.pop(sheetContext);
 
@@ -440,35 +430,30 @@ class _HomePageState extends State<HomePage> {
                   onTap: () {
                     showModalBottomSheet(
                       context: context,
+                      backgroundColor: Colors.transparent,
+                      isScrollControlled: true,
                       shape: const RoundedRectangleBorder(
                         borderRadius: BorderRadius.vertical(
                           top: Radius.circular(24),
                         ),
                       ),
-                      builder: (context) {
-                        return SafeArea(
+                      builder: (sheetContext) {
+                        return _AddOptionsSheet(
+                          eyebrow: 'ALIŞVERİŞ LİSTESİ',
+                          title: 'Listen nasıl oluşturulsun?',
+                          subtitle: 'Ürünleri tek tek ekle veya listeni tara.',
                           child: Padding(
-                            padding: const EdgeInsets.all(20),
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Alışveriş listesi nasıl oluşturulsun?',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-
-                                const SizedBox(height: 20),
-
-                                ListTile(
-                                  leading: const Icon(Icons.edit_outlined),
-                                  title: const Text('Manuel Ekle'),
-                                  subtitle: const Text('Ürünleri kendin ekle'),
+                                _AddMethodTile(
+                                  icon: Icons.playlist_add_rounded,
+                                  color: const Color(0xFF2563EB),
+                                  title: 'Manuel Ekle',
+                                  subtitle: 'Ürünleri kendin ekle',
                                   onTap: () {
-                                    Navigator.pop(context);
+                                    Navigator.pop(sheetContext);
 
                                     _openPage(
                                       ShoppingListPage(
@@ -478,26 +463,18 @@ class _HomePageState extends State<HomePage> {
                                   },
                                 ),
 
-                                const Divider(),
+                                const SizedBox(height: 12),
 
-                                ListTile(
-                                  leading: const Icon(
-                                    Icons.document_scanner_outlined,
-                                  ),
-                                  title: const Text('Liste Tara'),
-                                  subtitle: const Text(
-                                    'Diyet veya alışveriş listesindeki ürünleri çıkar',
-                                  ),
+                                _AddMethodTile(
+                                  icon: Icons.document_scanner_rounded,
+                                  color: const Color(0xFF7C3AED),
+                                  title: 'Liste Tara',
+                                  subtitle:
+                                      'Liste fotoğrafından ürünleri algıla',
                                   onTap: () {
-                                    Navigator.pop(context);
+                                    Navigator.pop(sheetContext);
 
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Liste tarama yakında eklenecek.',
-                                        ),
-                                      ),
-                                    );
+                                    _openPage(const ListScannerPage());
                                   },
                                 ),
                               ],
@@ -1538,6 +1515,229 @@ class _AiBadge extends StatelessWidget {
           fontSize: 9,
           fontWeight: FontWeight.w900,
           letterSpacing: .5,
+        ),
+      ),
+    );
+  }
+}
+
+class _AddOptionsSheet extends StatelessWidget {
+  final String eyebrow;
+  final String title;
+  final String subtitle;
+  final Widget child;
+
+  const _AddOptionsSheet({
+    required this.eyebrow,
+    required this.title,
+    required this.subtitle,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFFF7F9F8),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x260F172A),
+              blurRadius: 30,
+              offset: Offset(0, -8),
+            ),
+          ],
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 10),
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD5DDD8),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFF16A34A), Color(0xFF22C55E)],
+                        ),
+                        borderRadius: BorderRadius.circular(15),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x3322C55E),
+                            blurRadius: 14,
+                            offset: Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.add_shopping_cart_rounded,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            eyebrow,
+                            style: const TextStyle(
+                              color: Color(0xFF16A34A),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.1,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              color: Color(0xFF17221B),
+                              fontSize: 21,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -.3,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle,
+                            style: const TextStyle(
+                              color: Color(0xFF718078),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      tooltip: 'Kapat',
+                      style: IconButton.styleFrom(
+                        backgroundColor: const Color(0xFFE9EEEB),
+                        foregroundColor: const Color(0xFF58645D),
+                      ),
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                    ),
+                  ],
+                ),
+              ),
+              child,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AddMethodTile extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _AddMethodTile({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE3EAE6)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0D0F172A),
+                blurRadius: 12,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: .1),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Icon(icon, color: color, size: 25),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Color(0xFF1D2922),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: Color(0xFF748078),
+                        fontSize: 12,
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 30,
+                height: 30,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF1F5F2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 14,
+                  color: Color(0xFF647169),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

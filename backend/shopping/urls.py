@@ -3,6 +3,7 @@ from django.urls import path
 from .views import (
     ShoppingItemListCreateView,
     ShoppingItemDetailView,
+    AnalyzeShoppingListView,
 )
 
 urlpatterns = [
@@ -17,4 +18,9 @@ urlpatterns = [
         ShoppingItemDetailView.as_view(),
         name='shopping-item-detail',
     ),
+    path(
+    'analyze-list/',
+    AnalyzeShoppingListView.as_view(),
+    name='analyze-shopping-list',
+),
 ]
